@@ -44,7 +44,7 @@
 
 1. **Clone Repo**
    ```bash
-    git clone https://github.com/YourUser/project-babel.git
+    git clone https://github.com/G36maid/project-babel.git
     cd project-babel
     ```
 
