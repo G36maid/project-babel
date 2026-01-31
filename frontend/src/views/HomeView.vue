@@ -18,7 +18,7 @@ function joinGame() {
     </p>
     <button
       @click="joinGame"
-      class="rounded-lg bg-blue-600 px-8 py-4 text-2xl font-bold text-white transition-colors hover:bg-blue-700"
+      class="rounded-lg bg-blue-600 px-8 py-4 text-2xl font-bold text-white transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
     >
       Join Game
     </button>
