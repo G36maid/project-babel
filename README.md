@@ -4,9 +4,11 @@
 > 
 > *"In a world of surveillance, four strangers use a forgotten language to speak the truth."*
 
-![Banner Image](docs/assets/banner.png) ## 📖 專案簡介 (About)
+![Banner Image](docs/assets/banner.png)
+
+## 📖 專案簡介 (About)
 **Project Babel** 是一款多人合作的社會反烏托邦解謎遊戲。
-四名玩家身處不同的極權國家，面對各自的網路審查防火牆。為了傳遞真相，你們必須使用一套由 25 個原始符號組成的「未定義語言」，在充滿 `****` 與雜訊的聊天室中，拼湊出自由的拼圖。
+四名玩家身處不同的極權國家，面對各自的網路審查防火牆。為了傳遞真相，你們必須使用一套由 26 個原始符號組成的「未定義語言」，在充滿 `****` 與雜訊的聊天室中，拼湊出自由的拼圖。
 
 詳細設計文件請參閱：[Game Design Document](docs/docs.md)
 
@@ -44,25 +46,22 @@
    ```bash
    git clone [https://github.com/YourUser/project-babel.git](https://github.com/YourUser/project-babel.git)
    cd project-babel
-
-```
+   ```
 
 2. **安裝依賴**
-```bash
-npm run install:all
+   ```bash
+   cd frontend
+   npm install
+   ```
 
-```
+3. **啟動開發伺服器**
+   ```bash
+   npm run dev
+   ```
 
+   Frontend: `http://localhost:5173`
 
-3. **一鍵啟動 (同時跑 Backend + Frontend)**
-```bash
-npm run dev
-
-```
-
-
-* Frontend: `http://localhost:5173`
-* Backend: `http://localhost:3000`
+   *Note: Backend will be added in a future update.*
 
 
 
