@@ -3,9 +3,11 @@ use babel::manager::RoomManager;
 use babel::room::ChatRoom;
 use babel::server::{AppState, build_router};
 use babel::utils::deserialize_from_file;
+use dashmap::DashMap;
 use once_cell::sync::Lazy;
 use serde::Deserialize;
 use std::collections::HashMap;
+use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -58,7 +60,7 @@ async fn main() {
 
     let state = AppState {
         room_manager,
-        tokens_map,
+        tokens_map: Arc::new(DashMap::from_iter(tokens_map.into_iter())),
     };
 
     let app = build_router(state);

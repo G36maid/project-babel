@@ -30,7 +30,7 @@ use rand::distr::{Alphanumeric, SampleString};
 use futures::{SinkExt, StreamExt};
 use serde::Deserialize;
 use serde_json::{from_str, to_string};
-use std::collections::HashMap;
+use dashmap::DashMap;
 use std::sync::Arc;
 use tokio_stream::wrappers::WatchStream;
 use tower_http::cors::{Any, CorsLayer};
@@ -43,7 +43,7 @@ use crate::manager::{RoomConnector, RoomManager};
 #[derive(Clone)]
 pub struct AppState {
     pub room_manager: Arc<RoomManager>,
-    pub tokens_map: HashMap<String, (UserId, CountryCode)>,
+    pub tokens_map: Arc<DashMap<String, (UserId, CountryCode)>>,
 }
 
 #[derive(Deserialize)]
@@ -63,13 +63,13 @@ struct LoginResponse {
 }
 // POST /api/login - Login and get token
 async fn login(
-    State(mut state): State<AppState>,
+    State(state): State<AppState>,
     AxumJson(payload): AxumJson<LoginRequest>,
 ) -> Result<AxumJson<LoginResponse>, StatusCode> {
     // Generate a random token
     let token: String = Alphanumeric.sample_string(&mut rand::rng(), 16);
 
-    // Insert into tokens_map
+    // Insert into tokens_map (DashMap)
     state
         .tokens_map
         .insert(token.clone(), (payload.username, payload.country));
@@ -84,10 +84,11 @@ pub struct AuthenticatedUser {
 
 fn extract_user_from_headers(
     headers: &HeaderMap,
-    tokens_map: &HashMap<String, (UserId, CountryCode)>,
+    tokens_map: &DashMap<String, (UserId, CountryCode)>,
 ) -> Option<AuthenticatedUser> {
     let token = headers.get("X-User-Token")?.to_str().ok()?;
-    let (user_id, country) = tokens_map.get(token)?;
+    let entry = tokens_map.get(token)?;
+    let (user_id, country) = entry.value();
     Some(AuthenticatedUser {
         user_id: user_id.clone(),
         country: country.clone(),
