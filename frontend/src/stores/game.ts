@@ -60,7 +60,7 @@ export const useGameStore = defineStore('game', () => {
         connected.value = false
         connectionState.value = 'disconnected'
       },
-      onError(ws, event) {
+      onError(_ws, event) {
         console.error('[WebSocket] ❌ Error:', event)
         connectionState.value = 'error'
       },
