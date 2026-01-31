@@ -7,15 +7,17 @@ const router = useRouter()
 const gameStore = useGameStore()
 
 const playerName = ref('')
-const selectedToken = ref('test-token-alice')
+const selectedCountry = ref('A')
 const isJoining = ref(false)
 const errorMessage = ref('')
 
-const tokens = [
-  { value: 'test-token-alice', label: 'Alice (Country A)', country: 'A' },
-  { value: 'test-token-bob', label: 'Bob (Country B)', country: 'B' },
-  { value: 'test-token-charlie', label: 'Charlie (Country C)', country: 'C' },
-  { value: 'test-token-diana', label: 'Diana (Country D)', country: 'D' },
+const countries = [
+  { value: 'A', label: 'Country A' },
+  { value: 'B', label: 'Country B' },
+  { value: 'C', label: 'Country C' },
+  { value: 'D', label: 'Country D' },
+  { value: 'CN', label: 'China' },
+  { value: 'US', label: 'United States' },
 ]
 
 async function joinGame() {
@@ -28,11 +30,11 @@ async function joinGame() {
   errorMessage.value = ''
 
   try {
-    // Store player info
-    gameStore.setPlayerInfo(playerName.value.trim(), selectedToken.value)
+    // Perform login
+    const token = await gameStore.login(playerName.value.trim(), selectedCountry.value)
     
-    // Ensure test room exists
-    await gameStore.ensureTestRoom(selectedToken.value)
+    // Ensure test room exists (if needed, though connection creates it)
+    await gameStore.ensureTestRoom(token)
     
     // Navigate to game
     router.push('/game')
@@ -79,11 +81,11 @@ async function joinGame() {
             Select Country
           </label>
           <select
-            v-model="selectedToken"
+            v-model="selectedCountry"
             class="w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-3 text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
           >
-            <option v-for="token in tokens" :key="token.value" :value="token.value">
-              {{ token.label }}
+            <option v-for="country in countries" :key="country.value" :value="country.value">
+              {{ country.label }}
             </option>
           </select>
         </div>

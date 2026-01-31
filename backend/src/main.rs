@@ -9,6 +9,8 @@ use std::collections::HashMap;
 use tokio::net::TcpListener;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use dashmap::DashMap;
+use std::sync::Arc;
 
 static FILTER_CONFIG: Lazy<FilterConfig> =
     Lazy::new(|| deserialize_from_file("filter_config.json"));
@@ -31,14 +33,6 @@ impl RoomConfig for DefaultRoomConfig {
     }
 }
 
-fn load_user_tokens() -> HashMap<String, (UserId, CountryCode)> {
-    let tokens: HashMap<String, UserToken> = deserialize_from_file("user_tokens.json");
-    tokens
-        .into_iter()
-        .map(|(token, user_token)| (token, (user_token.user_id, user_token.country)))
-        .collect()
-}
-
 #[tokio::main]
 async fn main() {
     tracing_subscriber::registry()
@@ -51,14 +45,13 @@ async fn main() {
 
     info!("Initializing server");
 
-    let room_manager = RoomManager::from_config(DefaultRoomConfig);
-    let tokens_map = load_user_tokens();
 
-    eprintln!("Loaded {} user tokens", tokens_map.len());
+
+    let room_manager = RoomManager::from_config(DefaultRoomConfig);
 
     let state = AppState {
         room_manager,
-        tokens_map,
+        tokens_map: Arc::new(DashMap::new()),
     };
 
     let app = build_router(state);
