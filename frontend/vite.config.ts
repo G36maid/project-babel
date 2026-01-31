@@ -15,7 +15,7 @@ export default defineConfig({
     host: '0.0.0.0',
     proxy: {
       '/api': {
-        target: process.env.VITE_BACKEND_URL || 'http://localhost:3000',
+        target: 'http://localhost:3000',
         changeOrigin: true,
         ws: true, // Enable WebSocket proxy
       },
