@@ -1,5 +1,5 @@
 use std::time::{SystemTime, UNIX_EPOCH};
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
 
 use crate::data::*;
 use crate::filter::CensorshipFilter;
@@ -18,6 +18,7 @@ pub struct ChatRoom {
     pub receiver_censor: bool,
     pub shadow_ban: bool,
     pub allowed: HashSet<String>,
+    player_notes: HashMap<UserId, HashMap<CountryCode, Vec<String>>>,
 }
 
 impl ChatRoom {
@@ -44,6 +45,7 @@ impl ChatRoom {
             receiver_censor: true,
             shadow_ban: true,
             allowed: HashSet::new(),
+            player_notes: HashMap::new(),
         }
     }
 
@@ -107,6 +109,9 @@ impl ChatRoom {
             }
             UserAction::SendNote(note_map) => {
                 // Send note: players share their hypotheses about banned words
+                // Store the latest notes for this user
+                self.player_notes.insert(user_id.clone(), note_map.clone());
+                
                 // This generates a notification for other participants
                 let country_count = note_map.len();
                 let total_words: usize = note_map.values().map(|v| v.len()).sum();
@@ -212,6 +217,14 @@ impl ChatRoom {
     pub fn participants(&self) -> &[Participant] {
         &self.participants
     }
+
+    pub fn get_player_notes(&self) -> &HashMap<UserId, HashMap<CountryCode, Vec<String>>> {
+        &self.player_notes
+    }
+
+    pub fn get_player_note(&self, user_id: &UserId) -> Option<&HashMap<CountryCode, Vec<String>>> {
+        self.player_notes.get(user_id)
+    }
 }
 
 #[cfg(test)]
@@ -243,7 +256,7 @@ mod tests {
         note_map.insert("A".to_string(), vec!["freedom".to_string(), "democracy".to_string()]);
         note_map.insert("B".to_string(), vec!["monarchy".to_string()]);
 
-        let action = UserAction::SendNote(note_map);
+        let action = UserAction::SendNote(note_map.clone());
         let (message, notifications) = room.process_action(&user_id, &country, action);
 
         // Should not create a message
@@ -255,6 +268,11 @@ mod tests {
         assert!(notifications[0].message.contains("exploration notes"));
         assert!(notifications[0].message.contains("2 countries"));
         assert!(notifications[0].message.contains("3 words"));
+
+        // Should store the notes
+        let stored_note = room.get_player_note(&user_id);
+        assert!(stored_note.is_some());
+        assert_eq!(stored_note.unwrap(), &note_map);
     }
 
     #[test]
@@ -325,5 +343,38 @@ mod tests {
         assert!(notifications[0].message.contains("diana"));
         assert!(notifications[0].message.contains("1 country"));
         assert!(notifications[0].message.contains("1 word"));
+    }
+
+    #[test]
+    fn test_send_note_updates_latest() {
+        let config = make_test_config();
+        let mut room = ChatRoom::new("test_room".to_string(), config);
+        
+        let user_id = "alice".to_string();
+        let country = "A".to_string();
+        room.add_participant(user_id.clone(), country.clone());
+
+        // Send first note
+        let mut note_map1 = HashMap::new();
+        note_map1.insert("A".to_string(), vec!["freedom".to_string()]);
+        let action1 = UserAction::SendNote(note_map1.clone());
+        room.process_action(&user_id, &country, action1);
+
+        // Verify first note is stored
+        assert_eq!(room.get_player_note(&user_id).unwrap(), &note_map1);
+
+        // Send second note (should replace first)
+        let mut note_map2 = HashMap::new();
+        note_map2.insert("B".to_string(), vec!["monarchy".to_string(), "tradition".to_string()]);
+        let action2 = UserAction::SendNote(note_map2.clone());
+        room.process_action(&user_id, &country, action2);
+
+        // Verify only latest note is stored
+        let stored_note = room.get_player_note(&user_id).unwrap();
+        assert_eq!(stored_note, &note_map2);
+        assert_ne!(stored_note, &note_map1);
+        
+        // Verify we only have one entry per user
+        assert_eq!(room.get_player_notes().len(), 1);
     }
 }
