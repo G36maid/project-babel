@@ -4,7 +4,10 @@ use axum::{
     http::{HeaderMap, StatusCode},
     response::{Json, Response},
     routing::{get, post},
+    Json as AxumJson,
 };
+use rand::distr::Alphanumeric;
+use rand::Rng;
 use futures::{SinkExt, StreamExt};
 use serde_json::{from_str, to_string};
 use std::collections::HashMap;
@@ -19,6 +22,34 @@ use crate::manager::{RoomConnector, RoomManager};
 pub struct AppState {
     pub room_manager: Arc<RoomManager>,
     pub tokens_map: HashMap<String, (UserId, CountryCode)>,
+}
+
+#[derive(serde::Deserialize)]
+struct LoginRequest {
+    username: String,
+    country: String,
+}
+
+#[derive(serde::Serialize)]
+struct LoginResponse {
+    token: String,
+}
+// POST /api/login - Login and get token
+async fn login(
+    State(mut state): State<AppState>,
+    AxumJson(payload): AxumJson<LoginRequest>,
+) -> Result<AxumJson<LoginResponse>, StatusCode> {
+    // Generate a random token
+    let token: String = rand::rng()
+        .sample_iter(&Alphanumeric)
+        .take(32)
+        .map(char::from)
+        .collect();
+
+    // Insert into tokens_map
+    state.tokens_map.insert(token.clone(), (payload.username, payload.country));
+
+    Ok(AxumJson(LoginResponse { token }))
 }
 
 pub struct AuthenticatedUser {
@@ -193,6 +224,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/rooms", post(create_room))
         .route("/api/rooms/{id}/connect", get(connect_room))
         .route("/api/rooms/{id}/spectate", get(spectate_room))
+        .route("/api/login", post(login))
         .layer(cors)
         .with_state(state)
 }
