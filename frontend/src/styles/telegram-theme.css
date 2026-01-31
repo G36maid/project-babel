@@ -1,29 +1,96 @@
-/* Telegram Theme CSS Variables */
-
 :root {
   /* Dark Mode (Default) */
   --tg-bg: #17212b;
   --tg-bg-secondary: #232e3c;
   --tg-bg-chat: #0e1621;
+  
   --tg-message-out: #2b5278;
   --tg-message-in: #182533;
+  
   --tg-text: #f5f5f5;
   --tg-text-secondary: #708499;
+  
   --tg-accent: #5288c1;
   --tg-link: #6ab3f3;
   --tg-destructive: #ec3942;
+
+  /* Helper for message tails */
+  --tg-message-tail-out: #2b5278;
+  --tg-message-tail-in: #182533;
 }
 
 [data-theme="light"] {
   /* Light Mode */
   --tg-bg: #ffffff;
-  --tg-bg-secondary: #efeff3;
-  --tg-bg-chat: #ffffff;
-  --tg-message-out: #dcf8c6;
+  --tg-bg-secondary: #f4f4f5; /* Slightly darker than pure white for sidebar */
+  --tg-bg-chat: #8fbc8f; /* Placeholder pattern bg usually */
+  
+  --tg-message-out: #effdd6; /* Whatsapp/Telegram green-ish */
   --tg-message-in: #ffffff;
+  
   --tg-text: #000000;
-  --tg-text-secondary: #999999;
-  --tg-accent: #2481cc;
-  --tg-link: #2481cc;
-  --tg-destructive: #ec3942;
+  --tg-text-secondary: #707579;
+  
+  --tg-accent: #3390ec;
+  --tg-link: #3390ec;
+  --tg-destructive: #df3f40;
+
+   /* Helper for message tails */
+  --tg-message-tail-out: #effdd6;
+  --tg-message-tail-in: #ffffff;
+}
+
+/* Base utility for smooth theme transition */
+body {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Message Bubble Tail Classes */
+.message-tail {
+  position: relative;
+}
+
+.message-tail::before {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  width: 20px;
+  height: 25px;
+  z-index: 0;
+}
+
+.message-tail.outgoing::before {
+  right: -8px;
+  background-color: var(--tg-message-tail-out);
+  border-bottom-left-radius: 16px 14px;
+}
+
+.message-tail.outgoing::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  right: -10px;
+  width: 10px;
+  height: 25px;
+  background-color: var(--tg-bg-chat); /* Masking */
+  border-bottom-left-radius: 10px;
+  z-index: 1;
+}
+
+.message-tail.incoming::before {
+  left: -8px;
+  background-color: var(--tg-message-tail-in);
+  border-bottom-right-radius: 16px 14px;
+}
+
+.message-tail.incoming::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: -10px;
+  width: 10px;
+  height: 25px;
+  background-color: var(--tg-bg-chat); /* Masking */
+  border-bottom-right-radius: 10px;
+  z-index: 1;
 }

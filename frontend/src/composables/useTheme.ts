@@ -1,13 +1,10 @@
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 
-const THEME_KEY = 'telegram-theme'
-type Theme = 'dark' | 'light'
+const THEME_KEY = 'telegram_theme'
+type Theme = 'light' | 'dark'
 
 export function useTheme() {
   const theme = ref<Theme>('dark')
-
-  const isDark = computed(() => theme.value === 'dark')
-  const isLight = computed(() => theme.value === 'light')
 
   function setTheme(newTheme: Theme) {
     theme.value = newTheme
@@ -16,29 +13,26 @@ export function useTheme() {
   }
 
   function toggleTheme() {
-    const newTheme: Theme = theme.value === 'dark' ? 'light' : 'dark'
-    setTheme(newTheme)
-  }
-
-  function initTheme() {
-    const stored = localStorage.getItem(THEME_KEY) as Theme | null
-    if (stored && (stored === 'dark' || stored === 'light')) {
-      setTheme(stored)
-    } else {
-      setTheme('dark')
-    }
+    setTheme(theme.value === 'dark' ? 'light' : 'dark')
   }
 
   onMounted(() => {
-    initTheme()
+    const savedTheme = localStorage.getItem(THEME_KEY) as Theme
+    if (savedTheme) {
+      setTheme(savedTheme)
+    } else {
+      // System preference or default to dark
+      const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+      setTheme(systemDark ? 'dark' : 'light')
+    }
   })
+
+  const isDark = computed(() => theme.value === 'dark')
 
   return {
     theme,
     isDark,
-    isLight,
-    setTheme,
     toggleTheme,
-    initTheme
+    setTheme
   }
 }

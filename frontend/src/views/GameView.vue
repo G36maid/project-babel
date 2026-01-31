@@ -1,25 +1,16 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { useGameStore } from '@/stores/game'
-import TelegramLayout from '@/components/layout/TelegramLayout.vue'
-import Sidebar from '@/components/layout/Sidebar.vue'
-import ChatArea from '@/components/layout/ChatArea.vue'
-import ChatHeader from '@/components/chat/ChatHeader.vue'
-import MessageList from '@/components/chat/MessageList.vue'
-import ChatInput from '@/components/chat/ChatInput.vue'
-import SymbolKeyboard from '@/components/symbols/SymbolKeyboard.vue'
 
-const router = useRouter()
 const gameStore = useGameStore()
 
 // Local state
 const showSymbolKeyboard = ref(false)
 const inputText = ref('')
+const mobileSidebarOpen = ref(false)
 const playerId = ref(`player_${Math.random().toString(36).substr(2, 9)}`)
 
 // Computed
-const isConnected = computed(() => gameStore.connected)
 const messages = computed(() => gameStore.messages)
 const roomState = computed(() => gameStore.roomState)
 const connectionState = computed(() => gameStore.connectionState)
@@ -46,11 +37,6 @@ function handleSymbolSelect(emoji: string) {
   inputText.value += emoji
 }
 
-function handleLeave() {
-  gameStore.leaveRoom()
-  router.push('/')
-}
-
 // Connect on mount
 onMounted(() => {
   // For demo/development, auto-connect to a test room
@@ -62,7 +48,10 @@ onMounted(() => {
 </script>
 
 <template>
-  <TelegramLayout>
+  <TelegramLayout 
+    :sidebar-open="mobileSidebarOpen"
+    @close-sidebar="mobileSidebarOpen = false"
+  >
     <!-- Sidebar Slot -->
     <template #sidebar>
       <Sidebar 
@@ -79,6 +68,7 @@ onMounted(() => {
           <ChatHeader
             :room-name="roomName"
             :connection-state="connectionState"
+            @open-sidebar="mobileSidebarOpen = true"
           />
         </template>
         
