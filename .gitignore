@@ -54,5 +54,5 @@ Thumbs.db
 
 # Build artifacts
 *.tgz
-*.tar.gztarget/
+*.tar.gz
 backend/target/
