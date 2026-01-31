@@ -33,6 +33,7 @@ pub struct CensoredMessage {
 pub enum UserAction {
     SendMessage(String),
     SendMessageArray(Vec<String>),
+    SendNote(HashMap<CountryCode, Vec<String>>),
     LeaveRoom,
 }
 

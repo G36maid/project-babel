@@ -105,6 +105,19 @@ impl ChatRoom {
                 self.messages.push(message.clone());
                 (Some(message), notifications)
             }
+            UserAction::SendNote(note_map) => {
+                // Send note: players share their hypotheses about banned words
+                // This generates a notification for other participants
+                let country_count = note_map.len();
+                let total_words: usize = note_map.values().map(|v| v.len()).sum();
+                notifications.push(Notification {
+                    message: format!(
+                        "{} shared exploration notes ({} countries, {} words)",
+                        user_id, country_count, total_words
+                    ),
+                });
+                (None, notifications)
+            }
             UserAction::LeaveRoom => {
                 if self.remove_participant(user_id) {
                     notifications.push(Notification {
@@ -196,5 +209,96 @@ impl ChatRoom {
 
     pub fn participants(&self) -> &[Participant] {
         &self.participants
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    fn make_test_config() -> &'static FilterConfig {
+        let mut banned_words = HashMap::new();
+        banned_words.insert("A".to_string(), vec!["freedom".to_string()]);
+        banned_words.insert("B".to_string(), vec!["monarchy".to_string()]);
+        Box::leak(Box::new(FilterConfig {
+            banned_words,
+            replacement: "***".to_string(),
+        }))
+    }
+
+    #[test]
+    fn test_send_note_generates_notification() {
+        let config = make_test_config();
+        let mut room = ChatRoom::new("test_room".to_string(), config);
+        
+        let user_id = "alice".to_string();
+        let country = "A".to_string();
+        room.add_participant(user_id.clone(), country.clone());
+
+        // Create a note with suspected banned words
+        let mut note_map = HashMap::new();
+        note_map.insert("A".to_string(), vec!["freedom".to_string(), "democracy".to_string()]);
+        note_map.insert("B".to_string(), vec!["monarchy".to_string()]);
+
+        let action = UserAction::SendNote(note_map);
+        let (message, notifications) = room.process_action(&user_id, &country, action);
+
+        // Should not create a message
+        assert!(message.is_none());
+        
+        // Should generate a notification
+        assert_eq!(notifications.len(), 1);
+        assert!(notifications[0].message.contains("alice"));
+        assert!(notifications[0].message.contains("exploration notes"));
+        assert!(notifications[0].message.contains("2 countries"));
+        assert!(notifications[0].message.contains("3 words"));
+    }
+
+    #[test]
+    fn test_send_note_empty_map() {
+        let config = make_test_config();
+        let mut room = ChatRoom::new("test_room".to_string(), config);
+        
+        let user_id = "bob".to_string();
+        let country = "B".to_string();
+        room.add_participant(user_id.clone(), country.clone());
+
+        // Send an empty note
+        let note_map = HashMap::new();
+        let action = UserAction::SendNote(note_map);
+        let (message, notifications) = room.process_action(&user_id, &country, action);
+
+        // Should not create a message
+        assert!(message.is_none());
+        
+        // Should still generate a notification with 0 countries and 0 words
+        assert_eq!(notifications.len(), 1);
+        assert!(notifications[0].message.contains("bob"));
+        assert!(notifications[0].message.contains("0 countries"));
+        assert!(notifications[0].message.contains("0 words"));
+    }
+
+    #[test]
+    fn test_send_note_single_country() {
+        let config = make_test_config();
+        let mut room = ChatRoom::new("test_room".to_string(), config);
+        
+        let user_id = "charlie".to_string();
+        let country = "C".to_string();
+        room.add_participant(user_id.clone(), country.clone());
+
+        // Send note for single country
+        let mut note_map = HashMap::new();
+        note_map.insert("D".to_string(), vec!["word1".to_string(), "word2".to_string(), "word3".to_string()]);
+
+        let action = UserAction::SendNote(note_map);
+        let (message, notifications) = room.process_action(&user_id, &country, action);
+
+        assert!(message.is_none());
+        assert_eq!(notifications.len(), 1);
+        assert!(notifications[0].message.contains("charlie"));
+        assert!(notifications[0].message.contains("1 countries"));
+        assert!(notifications[0].message.contains("3 words"));
     }
 }
