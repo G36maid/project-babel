@@ -26,13 +26,9 @@ impl RoomConfig for DefaultRoomConfig {
 async fn main() {
     let room_manager = RoomManager::from_config(DefaultRoomConfig);
 
-    // Load user tokens: maps token -> (user_id, country)
-    let tokens_map: HashMap<String, (UserId, CountryCode)> =
-        deserialize_from_file("user_tokens.json");
-
     let state = AppState {
         room_manager,
-        tokens_map,
+        tokens_map: HashMap::new(),
     };
 
     let app = build_router(state);

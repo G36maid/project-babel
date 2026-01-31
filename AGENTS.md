@@ -219,8 +219,7 @@ project-babel/
 │   │   ├── data.rs        # Types and structs
 │   │   └── utils.rs       # File I/O helpers
 │   ├── Cargo.toml
-│   ├── filter_config.json # Censorship rules
-│   └── user_tokens.json   # Auth tokens
+│   └── filter_config.json # Censorship rules
 ├── frontend/              # Vue 3 frontend
 │   ├── src/
 │   │   ├── views/         # Page components
