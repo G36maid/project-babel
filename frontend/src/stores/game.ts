@@ -3,6 +3,10 @@ import { ref } from 'vue'
 import { useWebSocket } from '@vueuse/core'
 import type { RoomUpdate, UserAction, ConnectionState, CensoredMessage } from '@/types/websocket'
 
+interface LoginResponse {
+  token: string
+}
+
 const TEST_ROOM_ID = 'test_room'
 
 export const useGameStore = defineStore('game', () => {
@@ -131,6 +135,38 @@ export const useGameStore = defineStore('game', () => {
     localStorage.setItem('babel_player_token', token)
   }
 
+  async function login(username: string, country: string): Promise<string> {
+    try {
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username, country })
+      })
+
+      if (!response.ok) {
+        throw new Error('Login failed')
+      }
+
+      const data: LoginResponse = await response.json()
+
+      // Update local state
+      playerName.value = username
+      playerToken.value = data.token
+      playerId.value = username
+
+      // Persist
+      localStorage.setItem('babel_player_name', username)
+      localStorage.setItem('babel_player_token', data.token)
+
+      return data.token
+    } catch (err) {
+      console.error('[Store] Login error:', err)
+      throw err
+    }
+  }
+
   function loadPlayerInfo() {
     const savedName = localStorage.getItem('babel_player_name')
     const savedToken = localStorage.getItem('babel_player_token')
@@ -195,6 +231,7 @@ export const useGameStore = defineStore('game', () => {
     loadPlayerInfo,
     createRoom,
     ensureTestRoom,
-    connectToTestRoom
+    connectToTestRoom,
+    login
   }
 })

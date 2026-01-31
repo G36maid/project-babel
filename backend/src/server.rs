@@ -27,10 +27,9 @@ use axum::{
     routing::{get, post}
 };
 use rand::distr::{Alphanumeric, SampleString};
-use futures::{SinkExt, StreamExt};
+use dashmap::DashMap;
 use serde::Deserialize;
 use serde_json::{from_str, to_string};
-use dashmap::DashMap;
 use std::sync::Arc;
 use tokio_stream::wrappers::WatchStream;
 use tower_http::cors::{Any, CorsLayer};
@@ -87,8 +86,8 @@ fn extract_user_from_headers(
     tokens_map: &DashMap<String, (UserId, CountryCode)>,
 ) -> Option<AuthenticatedUser> {
     let token = headers.get("X-User-Token")?.to_str().ok()?;
-    let entry = tokens_map.get(token)?;
-    let (user_id, country) = entry.value();
+    let pair = tokens_map.get(token)?;
+    let (user_id, country) = pair.value();
     Some(AuthenticatedUser {
         user_id: user_id.clone(),
         country: country.clone(),
@@ -128,31 +127,31 @@ async fn connect_room(
     State(state): State<AppState>,
     Path(room_id): Path<RoomId>,
     Query(query): Query<ConnectQuery>,
-    headers: HeaderMap,
     ws: WebSocketUpgrade,
 ) -> Result<Response, StatusCode> {
-    let user = extract_user_from_headers(&headers, &state.tokens_map).ok_or_else(|| {
-        warn!(room_id, "Unauthorized connection attempt");
+    // Extract user from query parameter token
+    let (user_id, country) = state.tokens_map.get(&query.token).map(|pair| pair.value().clone()).ok_or_else(|| {
+        warn!(room_id, token = %query.token, "Unauthorized connection attempt");
         StatusCode::FORBIDDEN
     })?;
 
-    eprintln!(
-        "User {} ({}) connecting to room {}",
-        user.user_id, user.country, room_id
-    );
+    let user = AuthenticatedUser {
+        user_id: user_id.clone(),
+        country: country.clone(),
+    };
+
+    info!(room_id, user_id = %user.user_id, country = %user.country, "User connecting to room");
 
     // Get or create room if it doesn't exist (especially for test_room)
     let connector = state
         .room_manager
         .connect_to_room(&room_id)
         .unwrap_or_else(|| {
-            warn!(room_id, "Connection attempt to non-existent room");
+            info!(room_id, "Room not found, creating it");
             let new_room_id = Arc::clone(&state.room_manager).create_room_with_id(room_id.clone());
             state.room_manager.connect_to_room(&new_room_id).unwrap()
         });
 
-    let user_id = user.user_id.clone();
-    info!(room_id, user_id, "User connecting to room");
     Ok(ws.on_upgrade(move |socket| handle_participant_socket(socket, connector, user, room_id)))
 }
 
