@@ -8,25 +8,26 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy manifests first for dependency caching
+# Copy workspace manifests first for dependency caching
 COPY Cargo.toml Cargo.lock ./
+COPY backend/Cargo.toml ./backend/
 
 # Create dummy src to build dependencies
-RUN mkdir src && \
-    echo "fn main() {}" > src/main.rs
+RUN mkdir -p backend/src && \
+    echo "fn main() {}" > backend/src/main.rs
 
 # Build dependencies only
-RUN cargo build --release && \
-    rm -rf src
+RUN cargo build --release -p babel && \
+    rm -rf backend/src
 
 # Copy actual source code
-COPY src ./src
+COPY backend/src ./backend/src
 
 # Touch source files to ensure rebuild
-RUN touch src/main.rs
+RUN touch backend/src/main.rs
 
 # Build the application
-RUN cargo build --release
+RUN cargo build --release -p babel
 
 # Runtime stage
 FROM docker.io/debian:bookworm-slim
@@ -42,7 +43,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=builder /app/target/release/babel /app/babel
 
 # Copy config files if needed
-COPY filter_config.json ./
+COPY backend/filter_config.json ./
 
 # Expose the default port
 EXPOSE 3000
