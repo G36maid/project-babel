@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: production
+    container_name: babel-frontend
+    ports:
+      - "80:80"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - babel-network
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: babel-backend
+    ports:
+      - "3000:3000"
+    environment:
+      - RUST_ENV=production
+      - PORT=3000
+    networks:
+      - babel-network
+    restart: unless-stopped
+    image: alpine:latest
+    command: echo "Backend placeholder"
+
+networks:
+  babel-network:
+    driver: bridge
