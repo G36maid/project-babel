@@ -1,0 +1,6 @@
+{
+  "test-token-alice": ["alice", "A"],
+  "test-token-bob": ["bob", "B"],
+  "test-token-charlie": ["charlie", "C"],
+  "test-token": ["testuser", "A"]
+}
