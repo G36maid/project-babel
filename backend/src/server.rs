@@ -10,9 +10,9 @@ use axum::{
 };
 use futures::{SinkExt, StreamExt};
 use rand::distr::{Alphanumeric, SampleString};
+use dashmap::DashMap;
 use serde::Deserialize;
 use serde_json::{from_str, to_string};
-use std::collections::HashMap;
 use std::sync::Arc;
 use tokio_stream::wrappers::WatchStream;
 use tower_http::cors::{Any, CorsLayer};
@@ -25,7 +25,7 @@ use crate::manager::{RoomConnector, RoomManager};
 #[derive(Clone)]
 pub struct AppState {
     pub room_manager: Arc<RoomManager>,
-    pub tokens_map: HashMap<String, (UserId, CountryCode)>,
+    pub tokens_map: Arc<DashMap<String, (UserId, CountryCode)>>,
 }
 
 #[derive(Deserialize)]
@@ -45,7 +45,7 @@ struct LoginResponse {
 }
 // POST /api/login - Login and get token
 async fn login(
-    State(mut state): State<AppState>,
+    State(state): State<AppState>,
     AxumJson(payload): AxumJson<LoginRequest>,
 ) -> Result<AxumJson<LoginResponse>, StatusCode> {
     // Generate a random token
@@ -66,10 +66,11 @@ pub struct AuthenticatedUser {
 
 fn extract_user_from_headers(
     headers: &HeaderMap,
-    tokens_map: &HashMap<String, (UserId, CountryCode)>,
+    tokens_map: &DashMap<String, (UserId, CountryCode)>,
 ) -> Option<AuthenticatedUser> {
     let token = headers.get("X-User-Token")?.to_str().ok()?;
-    let (user_id, country) = tokens_map.get(token)?;
+    let pair = tokens_map.get(token)?;
+    let (user_id, country) = pair.value();
     Some(AuthenticatedUser {
         user_id: user_id.clone(),
         country: country.clone(),
@@ -112,7 +113,7 @@ async fn connect_room(
     ws: WebSocketUpgrade,
 ) -> Result<Response, StatusCode> {
     // Extract user from query parameter token
-    let (user_id, country) = state.tokens_map.get(&query.token).ok_or_else(|| {
+    let (user_id, country) = state.tokens_map.get(&query.token).map(|pair| pair.value().clone()).ok_or_else(|| {
         warn!(room_id, token = %query.token, "Unauthorized connection attempt");
         StatusCode::FORBIDDEN
     })?;
