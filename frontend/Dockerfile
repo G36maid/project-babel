@@ -1,6 +1,6 @@
 # Multi-stage build for Vue 3 frontend
 # Stage 1: Build stage
-FROM oven/bun:1-alpine AS builder
+FROM docker.io/oven/bun:1-alpine AS builder
 
 WORKDIR /app
 
@@ -17,7 +17,7 @@ COPY . .
 RUN bun run build
 
 # Stage 2: Production stage with Nginx
-FROM nginx:alpine AS production
+FROM docker.io/nginx:alpine AS production
 
 COPY --from=builder /app/dist /usr/share/nginx/html
 
@@ -28,7 +28,7 @@ EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
 
 # Stage 3: Development stage (optional, for hot reload)
-FROM oven/bun:1-alpine AS development
+FROM docker.io/oven/bun:1-alpine AS development
 
 WORKDIR /app
 
