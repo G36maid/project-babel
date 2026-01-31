@@ -56,3 +56,9 @@ Thumbs.db
 *.tgz
 *.tar.gz
 backend/target/
+
+# Secrets
+user_tokens.json
+
+backend/.claude/
+.claude/

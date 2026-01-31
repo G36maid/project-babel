@@ -17,8 +17,11 @@ async fn get_room_words_info(
     Ok(Json(RoomWordsInfo { allowed_words, banned_words }))
 }
 use axum::{
-    Router,
-    extract::{Path, State, WebSocketUpgrade, ws::{Message, WebSocket}},
+    Json as AxumJson, Router,
+    extract::{
+        Path, Query, State, WebSocketUpgrade,
+        ws::{Message, WebSocket},
+    },
     http::{HeaderMap, StatusCode},
     response::{Json, Response},
     routing::{get, post},
@@ -26,11 +29,15 @@ use axum::{
 };
 use rand::distr::{Alphanumeric, SampleString};
 use futures::{SinkExt, StreamExt};
+use rand::distr::{Alphanumeric, SampleString};
+use serde::Deserialize;
 use serde_json::{from_str, to_string};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio_stream::wrappers::WatchStream;
 use tower_http::cors::{Any, CorsLayer};
+use tower_http::trace::TraceLayer;
+use tracing::{debug, info, warn};
 
 use crate::data::*;
 use crate::manager::{RoomConnector, RoomManager};
@@ -41,7 +48,12 @@ pub struct AppState {
     pub tokens_map: HashMap<String, (UserId, CountryCode)>,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(Deserialize)]
+pub struct ConnectQuery {
+    token: String,
+}
+
+#[derive(Deserialize)]
 struct LoginRequest {
     username: String,
     country: String,
@@ -60,7 +72,9 @@ async fn login(
     let token: String = Alphanumeric.sample_string(&mut rand::rng(), 16);
 
     // Insert into tokens_map
-    state.tokens_map.insert(token.clone(), (payload.username, payload.country));
+    state
+        .tokens_map
+        .insert(token.clone(), (payload.username, payload.country));
 
     Ok(AxumJson(LoginResponse { token }))
 }
@@ -100,10 +114,13 @@ async fn create_room(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<Json<RoomId>, StatusCode> {
-    let _user = extract_user_from_headers(&headers, &state.tokens_map)
-        .ok_or(StatusCode::FORBIDDEN)?;
+    let _user = extract_user_from_headers(&headers, &state.tokens_map).ok_or_else(|| {
+        warn!("Unauthorized room creation attempt");
+        StatusCode::FORBIDDEN
+    })?;
 
     let room_id = Arc::clone(&state.room_manager).create_and_run_room();
+    info!(room_id, "Room created");
     Ok(Json(room_id))
 }
 
@@ -111,24 +128,40 @@ async fn create_room(
 async fn connect_room(
     State(state): State<AppState>,
     Path(room_id): Path<RoomId>,
+    Query(query): Query<ConnectQuery>,
     headers: HeaderMap,
     ws: WebSocketUpgrade,
 ) -> Result<Response, StatusCode> {
-    let user = extract_user_from_headers(&headers, &state.tokens_map)
-        .ok_or(StatusCode::FORBIDDEN)?;
+    let user = extract_user_from_headers(&headers, &state.tokens_map).ok_or_else(|| {
+        warn!(room_id, "Unauthorized connection attempt");
+        StatusCode::FORBIDDEN
+    })?;
 
+    eprintln!(
+        "User {} ({}) connecting to room {}",
+        user.user_id, user.country, room_id
+    );
+
+    // Get or create room if it doesn't exist (especially for test_room)
     let connector = state
         .room_manager
         .connect_to_room(&room_id)
-        .ok_or(StatusCode::NOT_FOUND)?;
+        .unwrap_or_else(|| {
+            warn!(room_id, "Connection attempt to non-existent room");
+            let new_room_id = Arc::clone(&state.room_manager).create_room_with_id(room_id.clone());
+            state.room_manager.connect_to_room(&new_room_id).unwrap()
+        });
 
-    Ok(ws.on_upgrade(move |socket| handle_participant_socket(socket, connector, user)))
+    let user_id = user.user_id.clone();
+    info!(room_id, user_id, "User connecting to room");
+    Ok(ws.on_upgrade(move |socket| handle_participant_socket(socket, connector, user, room_id)))
 }
 
 async fn handle_participant_socket(
     socket: WebSocket,
     connector: RoomConnector,
     user: AuthenticatedUser,
+    room_id: RoomId,
 ) {
     let (mut ws_sender, mut ws_receiver) = socket.split();
     let RoomConnector {
@@ -138,6 +171,9 @@ async fn handle_participant_socket(
         banned_words: _,
     } = connector;
 
+    let user_id = &user.user_id;
+    debug!(room_id, user_id, "WebSocket connection established");
+
     // Send initial join action
     let join_message = UserMessage {
         user_id: user.user_id.clone(),
@@ -145,6 +181,7 @@ async fn handle_participant_socket(
         action: UserAction::SendMessage(String::new()), // Empty message to trigger join
     };
     if action_sender.send(join_message).await.is_err() {
+        warn!(room_id, user_id, "Failed to send join message");
         return;
     }
 
@@ -153,18 +190,24 @@ async fn handle_participant_socket(
             msg = ws_receiver.next() => {
                 match msg {
                     Some(Ok(Message::Text(text))) => {
+                        eprintln!("Received message from {}: {}", user.user_id, text);
                         if let Ok(action) = from_str::<UserAction>(&text) {
+                            debug!(room_id, user_id, ?action, "Received action");
                             let user_message = UserMessage {
                                 user_id: user.user_id.clone(),
                                 country: user.country.clone(),
                                 action,
                             };
                             if action_sender.send(user_message).await.is_err() {
+                                warn!(room_id, user_id, "Failed to send action");
                                 break;
                             }
+                        } else {
+                            eprintln!("Failed to parse action from: {}", text);
                         }
                     }
                     Some(Ok(Message::Close(_))) | None => {
+                        info!(room_id, user_id, "User disconnecting");
                         // Send leave action
                         let leave_message = UserMessage {
                             user_id: user.user_id.clone(),
@@ -181,12 +224,16 @@ async fn handle_participant_socket(
                 match result {
                     Ok(_) => {
                         let update = update_receiver.borrow().clone();
+                        eprintln!("Sending update to {}: {} new messages, {} notifications",
+                            user.user_id, update.new_messages.len(), update.notifications.len());
                         if let Ok(json) = to_string(&update) {
                             if ws_sender.send(Message::Text(json.into())).await.is_err() {
+                                debug!(room_id, user_id, "Failed to send update, closing connection");
                                 break;
                             }
                         }
                         if update.room_closed {
+                            info!(room_id, user_id, "Room closed");
                             break;
                         }
                     }
@@ -206,22 +253,30 @@ async fn spectate_room(
     let connector = state
         .room_manager
         .connect_to_room(&room_id)
-        .ok_or(StatusCode::NOT_FOUND)?;
+        .ok_or_else(|| {
+            warn!(room_id, "Spectate attempt on non-existent room");
+            StatusCode::NOT_FOUND
+        })?;
 
-    Ok(ws.on_upgrade(move |socket| handle_spectator_socket(socket, connector)))
+    info!(room_id, "Spectator connecting");
+    Ok(ws.on_upgrade(move |socket| handle_spectator_socket(socket, connector, room_id)))
 }
 
-async fn handle_spectator_socket(socket: WebSocket, connector: RoomConnector) {
+async fn handle_spectator_socket(socket: WebSocket, connector: RoomConnector, room_id: RoomId) {
     let (mut ws_sender, _ws_receiver) = socket.split();
     let mut update_stream = WatchStream::new(connector.update_receiver);
+
+    debug!(room_id, "Spectator WebSocket established");
 
     while let Some(update) = update_stream.next().await {
         if let Ok(json) = to_string(&update) {
             if ws_sender.send(Message::Text(json.into())).await.is_err() {
+                debug!(room_id, "Spectator disconnected");
                 break;
             }
         }
         if update.room_closed {
+            info!(room_id, "Room closed, spectator disconnecting");
             break;
         }
     }
@@ -241,6 +296,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/rooms/{id}/spectate", get(spectate_room))
         .route("/api/rooms/{id}/info", get(get_room_words_info))
         .route("/api/login", post(login))
+        .layer(TraceLayer::new_for_http())
         .layer(cors)
         .with_state(state)
 }

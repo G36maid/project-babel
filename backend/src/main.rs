@@ -4,11 +4,20 @@ use babel::room::ChatRoom;
 use babel::server::{AppState, build_router};
 use babel::utils::deserialize_from_file;
 use once_cell::sync::Lazy;
+use serde::Deserialize;
 use std::collections::HashMap;
 use tokio::net::TcpListener;
+use tracing::info;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 static FILTER_CONFIG: Lazy<FilterConfig> =
     Lazy::new(|| deserialize_from_file("filter_config.json"));
+
+#[derive(Deserialize)]
+struct UserToken {
+    user_id: String,
+    country: String,
+}
 
 pub struct DefaultRoomConfig;
 
@@ -22,13 +31,30 @@ impl RoomConfig for DefaultRoomConfig {
     }
 }
 
+fn load_user_tokens() -> HashMap<String, (UserId, CountryCode)> {
+    let tokens: HashMap<String, UserToken> = deserialize_from_file("user_tokens.json");
+    tokens
+        .into_iter()
+        .map(|(token, user_token)| (token, (user_token.user_id, user_token.country)))
+        .collect()
+}
+
 #[tokio::main]
 async fn main() {
-    let room_manager = RoomManager::from_config(DefaultRoomConfig);
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "babel=debug,tower_http=debug".into()),
+        )
+        .with(tracing_subscriber::fmt::layer())
+        .init();
 
-    // Load user tokens: maps token -> (user_id, country)
-    let tokens_map: HashMap<String, (UserId, CountryCode)> =
-        deserialize_from_file("user_tokens.json");
+    info!("Initializing server");
+
+    let room_manager = RoomManager::from_config(DefaultRoomConfig);
+    let tokens_map = load_user_tokens();
+
+    eprintln!("Loaded {} user tokens", tokens_map.len());
 
     let state = AppState {
         room_manager,
@@ -38,7 +64,7 @@ async fn main() {
     let app = build_router(state);
 
     let addr = "0.0.0.0:3000";
-    eprintln!("Starting server on {}", addr);
+    info!(addr, "Starting server");
 
     let listener = TcpListener::bind(addr).await.expect("Failed to bind");
     axum::serve(listener, app).await.expect("Server error");

@@ -37,33 +37,101 @@
 ## 🚀 快速開始 (Quick Start)
 
 ### 前置需求 (Prerequisites)
+
+Choose one of the following setup methods:
+
+**Option 1: Docker (Recommended - Easiest)**
+- [Docker](https://docs.docker.com/get-docker/) (v20.10+)
+- [Docker Compose](https://docs.docker.com/compose/install/) (v2.0+)
+
+**Option 2: Local Development**
 - [Bun](https://bun.sh/) (v1.2+) - Fast JavaScript runtime & package manager
   - *Alternative: [Node.js](https://nodejs.org/) v18+ with npm also works*
 - [Rust](https://www.rust-lang.org/) (Latest Stable)
 
-### 安裝與執行 (Development)
+---
+
+### 方法 1: Docker (Production-like) ⭐推薦
+
+最簡單的方式，一鍵啟動完整環境：
+
+```bash
+# 1. Clone Repo
+git clone https://github.com/G36maid/project-babel.git
+cd project-babel
+
+# 2. 啟動所有服務
+docker-compose up -d
+
+# 3. 確認服務狀態
+docker-compose ps
+```
+
+**服務位置**:
+- Frontend: `http://localhost:8080`
+- Backend API: `http://localhost:3000`
+
+**常用指令**:
+```bash
+# 查看日誌
+docker-compose logs -f
+
+# 停止服務
+docker-compose down
+
+# 重新建置（更新程式碼後）
+docker-compose up -d --build
+```
+
+---
+
+### 方法 2: Local Development (開發調試)
+
+適合需要即時調試、熱重載的開發場景：
 
 1. **Clone Repo**
    ```bash
-    git clone https://github.com/G36maid/project-babel.git
-    cd project-babel
-    ```
+   git clone https://github.com/G36maid/project-babel.git
+   cd project-babel
+   ```
 
 2. **安裝依賴** (Bun is ~4-6× faster)
    ```bash
-    cd frontend
-    bun install
+   cd frontend
+   bun install
    ```
    
    *Note: `npm install` also works if you prefer npm*
 
 3. **啟動開發伺服器**
+
+   Terminal 1 - 啟動後端:
    ```bash
-    bun run dev
+   cd backend && cargo run
    ```
 
-   Frontend: `http://localhost:5173`  
-   Backend: `http://localhost:3000` (run `cargo run` in `/backend`)
+   Terminal 2 - 啟動前端:
+   ```bash
+   cd frontend && bun run dev
+   ```
+
+   **服務位置**:
+   - Frontend: `http://localhost:5173`
+   - Backend: `http://localhost:3000`
+
+---
+
+### 方法 3: Docker Development (Frontend Hot Reload)
+
+僅前端使用 Docker 開發（保留熱重載功能）：
+
+```bash
+cd frontend
+
+# 開發模式（支援熱重載）
+docker build --target development -t babel-frontend-dev .
+docker run -p 5173:5173 -v $(pwd):/app babel-frontend-dev
+```
 
 
 

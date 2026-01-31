@@ -133,6 +133,16 @@ impl RoomManager {
 
     pub fn create_and_run_room(self: Arc<Self>) -> RoomId {
         let room_id: RoomId = Alphanumeric.sample_string(&mut rand::rng(), 16);
+        self.create_room_with_id(room_id)
+    }
+
+    pub fn create_room_with_id(self: Arc<Self>, room_id: RoomId) -> RoomId {
+        // Check if room already exists
+        if self.active_rooms.contains_key(&room_id) {
+            eprintln!("Room {} already exists, returning existing room", &room_id);
+            return room_id;
+        }
+
         let room = self.config.init_room(room_id.clone());
 
         let (action_sender, action_receiver) = mpsc::channel(MAX_USER_ACTIONS);

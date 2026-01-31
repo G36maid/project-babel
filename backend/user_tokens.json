@@ -1,6 +1,7 @@
 {
-  "test-token-alice": ["alice", "A"],
-  "test-token-bob": ["bob", "B"],
-  "test-token-charlie": ["charlie", "C"],
-  "test-token": ["testuser", "A"]
+  "test-token-alice": {"user_id": "alice", "country": "A"},
+  "test-token-bob": {"user_id": "bob", "country": "B"},
+  "test-token-charlie": {"user_id": "charlie", "country": "C"},
+  "test-token-diana": {"user_id": "diana", "country": "D"},
+  "test-token": {"user_id": "testuser", "country": "A"}
 }

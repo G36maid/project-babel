@@ -7,32 +7,70 @@
 
 ## 🏗️ Build & Run Commands
 
-### Frontend (Vue 3 + TypeScript)
+### Docker (Unified - Recommended)
+**Working Directory**: Project root
+
+| Action | Command | Description |
+|--------|---------|-------------|
+| Start All | `docker-compose up -d` | Start frontend + backend in detached mode |
+| Stop All | `docker-compose down` | Stop all services |
+| View Logs | `docker-compose logs -f` | Follow logs from all services |
+| Rebuild | `docker-compose up -d --build` | Rebuild and restart after code changes |
+| Frontend Only | `docker-compose up -d frontend` | Start only frontend service |
+| Backend Only | `docker-compose up -d backend` | Start only backend service |
+
+**Service URLs**:
+- Frontend: `http://localhost:8080` (Nginx production build)
+- Backend: `http://localhost:3000` (Rust Axum)
+
+**Network**: Services communicate via `babel-network` bridge (defined in docker-compose.yml)
+
+---
+
+### Frontend (Vue 3 + TypeScript) - Local Dev
 **Working Directory**: `frontend/`
 
-| Action | Bun (Primary) | npm (Alternative) | Description |
-|--------|---------------|-------------------|-------------|
-| Install | `bun install` | `npm install` | Install dependencies |
-| Dev | `bun run dev` | `npm run dev` | Vite dev server on `localhost:5173` |
-| Build | `bun run build` | `npm run build` | Type check + production build |
-| Preview | `bun run preview` | `npm run preview` | Preview production build |
-| Type Check | `bunx vue-tsc -b` | `npx vue-tsc -b` | TypeScript compiler only |
+| Action | Bun (Primary) | npm (Alternative) | Docker Dev | Description |
+|--------|---------------|-------------------|------------|-------------|
+| Install | `bun install` | `npm install` | - | Install dependencies |
+| Dev | `bun run dev` | `npm run dev` | `docker build --target development -t babel-dev . && docker run -p 5173:5173 -v $(pwd):/app babel-dev` | Vite dev server on `localhost:5173` |
+| Build | `bun run build` | `npm run build` | `docker build --target production -t babel-prod .` | Production build |
+| Preview | `bun run preview` | `npm run preview` | - | Preview production build |
+| Type Check | `bunx vue-tsc -b` | `npx vue-tsc -b` | - | TypeScript compiler only |
 
 **Lockfile**: `bun.lock` (text format, git-diffable)  
 **Why Bun?** ~4-6× faster than npm. Both work since they share `package.json`.
 
-### Backend (Rust + Axum)
+---
+
+### Backend (Rust + Axum) - Local Dev
 **Working Directory**: `backend/` or project root
 
-| Action | Command | Description |
-|--------|---------|-------------|
-| Run | `cargo run` | Start server on `localhost:3000` |
-| Build | `cargo build --release` | Production build |
-| Test | `cargo test` | Run all tests |
-| Test Single | `cargo test test_name` | Run specific test |
-| Check | `cargo check` | Fast compile check |
+| Action | Command | Docker Build | Description |
+|--------|---------|--------------|-------------|
+| Run | `cargo run` | `docker build -t babel-backend . && docker run -p 3000:3000 babel-backend` | Start server on `localhost:3000` |
+| Build | `cargo build --release` | `docker build --target builder -t babel-backend-builder .` | Production build |
+| Test | `cargo test` | - | Run all tests |
+| Test Single | `cargo test test_name` | - | Run specific test |
+| Check | `cargo check` | - | Fast compile check |
 
-### Development Workflow
+---
+
+### Development Workflow Options
+
+#### Option 1: Docker Compose (Recommended for consistency)
+```bash
+# Single command to start everything
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop everything
+docker-compose down
+```
+
+#### Option 2: Local Development (Faster iteration)
 ```bash
 # Terminal 1: Start backend
 cd backend && cargo run
@@ -41,7 +79,19 @@ cd backend && cargo run
 cd frontend && bun run dev
 ```
 
-**Proxy**: Frontend dev server proxies `/api` and `/socket.io` to backend.
+#### Option 3: Hybrid (Backend Docker + Frontend Local)
+```bash
+# Terminal 1: Backend in Docker
+docker-compose up -d backend
+
+# Terminal 2: Frontend local for hot reload
+cd frontend && bun run dev
+```
+
+**Proxy Configuration**:
+- Local dev: Frontend dev server proxies `/api` and WebSocket to backend via Vite config
+- Docker: Nginx proxies `/api/` and `/api/rooms/` to backend service
+- Both setups handle client-side routing for Vue Router
 
 ---
 
@@ -169,8 +219,7 @@ project-babel/
 │   │   ├── data.rs        # Types and structs
 │   │   └── utils.rs       # File I/O helpers
 │   ├── Cargo.toml
-│   ├── filter_config.json # Censorship rules
-│   └── user_tokens.json   # Auth tokens
+│   └── filter_config.json # Censorship rules
 ├── frontend/              # Vue 3 frontend
 │   ├── src/
 │   │   ├── views/         # Page components
@@ -189,22 +238,39 @@ project-babel/
 
 ## ⚠️ Repository Quirks
 
-1. **No Linting**: No ESLint/Prettier (frontend) or Clippy (backend). Follow conventions manually.
-2. **Frontend Tests**: None configured. Manual verification required.
-3. **Backend Tests**: Unit tests exist in `filter.rs`. Run with `cargo test`.
-4. **TS Config**: `tsconfig.app.json` is active; `tsconfig.json` is a reference container.
-5. **Package Manager**: `bun.lock` is the lockfile (text format). Both Bun and npm work, but Bun is ~4-6× faster.
-6. **Node Modules**: Located in `frontend/node_modules/` after `bun install`.
+1. **Docker First**: Docker Compose is the recommended way to run the project. All services are containerized for consistency.
+2. **No Linting**: No ESLint/Prettier (frontend) or Clippy (backend). Follow conventions manually.
+3. **Frontend Tests**: None configured. Manual verification required.
+4. **Backend Tests**: Unit tests exist in `filter.rs`. Run with `cargo test`.
+5. **TS Config**: `tsconfig.app.json` is active; `tsconfig.json` is a reference container.
+6. **Package Manager**: `bun.lock` is the lockfile (text format). Both Bun and npm work, but Bun is ~4-6× faster.
+7. **Node Modules**: Located in `frontend/node_modules/` after `bun install`.
+8. **Port Mappings**:
+   - Docker Production: Frontend `8080`, Backend `3000`
+   - Local Development: Frontend `5173`, Backend `3000`
 
 ---
 
 ## 🚀 Agent Workflows
 
-1. **Frontend Changes**: Always `cd frontend/` first
-2. **Backend Changes**: Can run from root (workspace) or `backend/`
-3. **Type Safety**: Run `bunx vue-tsc -b` after TS changes; `cargo check` after Rust changes
-4. **Testing**: Describe manual verification steps since test coverage is minimal
-5. **No Type Suppression**: Never use `@ts-ignore`, `as any`, or `unwrap_unchecked()`
+### Development Mode Selection
+
+Before starting work, determine which development mode to use:
+
+| Mode | Best For | Command |
+|------|----------|---------|
+| **Docker Compose** | Testing full integration, production parity | `docker-compose up -d` |
+| **Local + Docker** | Frontend hot reload + stable backend | `docker-compose up -d backend` + `cd frontend && bun run dev` |
+| **Full Local** | Maximum debugging capability, fast iteration | `cargo run` + `bun run dev` |
+
+### General Guidelines
+
+1. **Docker First**: When in doubt, use `docker-compose up -d` for consistent environments
+2. **Frontend Changes**: Can work in container (`docker-compose up -d`) OR local (`cd frontend && bun run dev`)
+3. **Backend Changes**: Can hot-reload with `docker-compose up -d` (rebuild on change) OR local `cargo run`
+4. **Type Safety**: Run `bunx vue-tsc -b` after TS changes; `cargo check` after Rust changes
+5. **Testing**: Describe manual verification steps since test coverage is minimal
+6. **No Type Suppression**: Never use `@ts-ignore`, `as any`, or `unwrap_unchecked()`
 
 ---
 
@@ -212,7 +278,10 @@ project-babel/
 
 | Task | Command |
 |------|---------|
-| Start both services | Backend: `cargo run`, Frontend: `bun run dev` |
+| Start all (Docker) | `docker-compose up -d` |
+| Start both (Local) | Backend: `cargo run`, Frontend: `bun run dev` |
+| Rebuild after changes | `docker-compose up -d --build` |
+| View logs | `docker-compose logs -f` |
 | Add Vue component | `src/components/ComponentName.vue` |
 | Add Pinia store | `src/stores/feature.ts` with `useFeatureStore` |
 | Add Rust module | Create `src/module.rs` + add to `lib.rs` |
