@@ -1,0 +1,57 @@
+# Rust
+/target/
+**/*.rs.bk
+Cargo.lock
+
+# Node
+node_modules/
+bun.lockb
+dist/
+dist-ssr/
+*.local
+.npm/
+
+# Bun
+bun.lock
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+logs/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+.zed/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.sublime-*
+.cache/
+.project
+
+# AGENTS
+.opencode/
+.sisyphus/
+
+# Build artifacts
+*.tgz
+*.tar.gz
