@@ -3,14 +3,13 @@ use babel::manager::RoomManager;
 use babel::room::ChatRoom;
 use babel::server::{AppState, build_router};
 use babel::utils::deserialize_from_file;
+use dashmap::DashMap;
 use once_cell::sync::Lazy;
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use dashmap::DashMap;
-use std::sync::Arc;
 
 static FILTER_CONFIG: Lazy<FilterConfig> =
     Lazy::new(|| deserialize_from_file("filter_config.json"));

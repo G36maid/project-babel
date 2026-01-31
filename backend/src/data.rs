@@ -28,10 +28,11 @@ pub struct CensoredMessage {
     pub was_censored: bool,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum UserAction {
     SendMessage(String),
+    SendMessageArray(Vec<String>),
     LeaveRoom,
 }
 

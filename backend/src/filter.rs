@@ -1,7 +1,7 @@
 use crate::data::{CountryCode, FilterConfig};
 
 pub struct CensorshipFilter {
-    config: &'static FilterConfig,
+    pub(crate) config: &'static FilterConfig,
 }
 
 impl CensorshipFilter {

@@ -1,3 +1,23 @@
+use futures::StreamExt;
+use serde::Serialize;
+use futures::SinkExt;
+#[derive(Serialize)]
+struct RoomWordsInfo {
+    allowed_words: Vec<String>,
+    banned_words: std::collections::HashMap<String, Vec<String>>,
+}
+
+// GET /api/rooms/{id}/info - Return allowed and banned words for the room
+async fn get_room_words_info(
+    State(state): State<AppState>,
+    Path(room_id): Path<RoomId>,
+) -> Result<Json<RoomWordsInfo>, StatusCode> {
+    let connector = state.room_manager.connect_to_room(&room_id)
+        .ok_or(StatusCode::NOT_FOUND)?;
+    let allowed_words = (*connector.allowed_words).clone();
+    let banned_words = (*connector.banned_words).clone();
+    Ok(Json(RoomWordsInfo { allowed_words, banned_words }))
+}
 use axum::{
     Json as AxumJson, Router,
     extract::{
@@ -6,9 +26,8 @@ use axum::{
     },
     http::{HeaderMap, StatusCode},
     response::{Json, Response},
-    routing::{get, post},
+    routing::{get, post}
 };
-use futures::{SinkExt, StreamExt};
 use rand::distr::{Alphanumeric, SampleString};
 use dashmap::DashMap;
 use serde::Deserialize;
@@ -51,7 +70,7 @@ async fn login(
     // Generate a random token
     let token: String = Alphanumeric.sample_string(&mut rand::rng(), 16);
 
-    // Insert into tokens_map
+    // Insert into tokens_map (DashMap)
     state
         .tokens_map
         .insert(token.clone(), (payload.username, payload.country));
@@ -148,6 +167,8 @@ async fn handle_participant_socket(
     let RoomConnector {
         action_sender,
         mut update_receiver,
+        allowed_words: _,
+        banned_words: _,
     } = connector;
 
     let user_id = &user.user_id;
@@ -273,6 +294,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/rooms", post(create_room))
         .route("/api/rooms/{id}/connect", get(connect_room))
         .route("/api/rooms/{id}/spectate", get(spectate_room))
+        .route("/api/rooms/{id}/info", get(get_room_words_info))
         .route("/api/login", post(login))
         .layer(TraceLayer::new_for_http())
         .layer(cors)

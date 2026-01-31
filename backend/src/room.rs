@@ -2,6 +2,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::data::*;
 use crate::filter::CensorshipFilter;
+use crate::words::{load_words, generate_allowed_and_banned_words};
 
 pub struct ChatRoom {
     room_id: RoomId,
@@ -10,18 +11,30 @@ pub struct ChatRoom {
     participants: Vec<Participant>,
     messages: Vec<Message>,
     message_counter: MessageId,
-    filter: CensorshipFilter,
+    pub(crate) filter: CensorshipFilter,
+    pub(crate) allowed_words: Vec<String>,
 }
 
 impl ChatRoom {
     pub fn new(room_id: RoomId, config: &'static FilterConfig) -> Self {
+        // Load words from words.json
+        let words = load_words("words.json");
+        let country_codes = ["TW", "CN", "US", "RU"];
+        let (allowed_words, banned_map) = generate_allowed_and_banned_words(&words, &country_codes);
+        // Clone and update the config's banned_words for this room
+        let mut config_owned = config.clone();
+        for (country, banned) in &banned_map {
+            config_owned.banned_words.insert(country.clone(), banned.clone());
+        }
+        let config_ref: &'static FilterConfig = Box::leak(Box::new(config_owned));
         Self {
             room_id,
-            config,
+            config: config_ref,
             participants: Vec::new(),
             messages: Vec::new(),
             message_counter: 0,
-            filter: CensorshipFilter::new(config),
+            filter: CensorshipFilter::new(config_ref),
+            allowed_words,
         }
     }
 
@@ -61,7 +74,17 @@ impl ChatRoom {
         let mut notifications = Vec::new();
 
         match action {
-            UserAction::SendMessage(content) => {
+            // Accept only allowed words in message array
+            UserAction::SendMessageArray(words) => {
+                // Only keep allowed words
+                let filtered: Vec<String> = words
+                    .into_iter()
+                    .filter(|w| self.allowed_words.contains(w))
+                    .collect();
+                let content = filtered.join(" ");
+                if content.is_empty() {
+                    return (None, notifications);
+                }
                 self.message_counter += 1;
                 let message = Message {
                     id: self.message_counter,
@@ -80,6 +103,29 @@ impl ChatRoom {
                     });
                 }
                 (None, notifications)
+            }
+            // fallback for old SendMessage (single string)
+            UserAction::SendMessage(content) => {
+                // fallback: split and filter
+                let filtered: Vec<String> = content
+                    .split_whitespace()
+                    .filter(|w| self.allowed_words.contains(&w.to_string()))
+                    .map(|w| w.to_string())
+                    .collect();
+                let content = filtered.join(" ");
+                if content.is_empty() {
+                    return (None, notifications);
+                }
+                self.message_counter += 1;
+                let message = Message {
+                    id: self.message_counter,
+                    sender_id: user_id.clone(),
+                    sender_country: country.clone(),
+                    content,
+                    timestamp: Self::current_timestamp(),
+                };
+                self.messages.push(message.clone());
+                (Some(message), notifications)
             }
         }
     }
