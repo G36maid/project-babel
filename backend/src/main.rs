@@ -4,6 +4,7 @@ use babel::room::ChatRoom;
 use babel::server::{AppState, build_router};
 use babel::utils::deserialize_from_file;
 use once_cell::sync::Lazy;
+use serde::Deserialize;
 use std::collections::HashMap;
 use tokio::net::TcpListener;
 use tracing::info;
@@ -11,6 +12,12 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 static FILTER_CONFIG: Lazy<FilterConfig> =
     Lazy::new(|| deserialize_from_file("filter_config.json"));
+
+#[derive(Deserialize)]
+struct UserToken {
+    user_id: String,
+    country: String,
+}
 
 pub struct DefaultRoomConfig;
 
@@ -22,6 +29,14 @@ impl RoomConfig for DefaultRoomConfig {
     fn init_room(&self, room_id: RoomId) -> ChatRoom {
         ChatRoom::new(room_id, &FILTER_CONFIG)
     }
+}
+
+fn load_user_tokens() -> HashMap<String, (UserId, CountryCode)> {
+    let tokens: HashMap<String, UserToken> = deserialize_from_file("user_tokens.json");
+    tokens
+        .into_iter()
+        .map(|(token, user_token)| (token, (user_token.user_id, user_token.country)))
+        .collect()
 }
 
 #[tokio::main]
@@ -37,10 +52,13 @@ async fn main() {
     info!("Initializing server");
 
     let room_manager = RoomManager::from_config(DefaultRoomConfig);
+    let tokens_map = load_user_tokens();
+
+    eprintln!("Loaded {} user tokens", tokens_map.len());
 
     let state = AppState {
         room_manager,
-        tokens_map: HashMap::new(),
+        tokens_map,
     };
 
     let app = build_router(state);
