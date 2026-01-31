@@ -110,10 +110,12 @@ impl ChatRoom {
                 // This generates a notification for other participants
                 let country_count = note_map.len();
                 let total_words: usize = note_map.values().map(|v| v.len()).sum();
+                let country_label = if country_count == 1 { "country" } else { "countries" };
+                let word_label = if total_words == 1 { "word" } else { "words" };
                 notifications.push(Notification {
                     message: format!(
-                        "{} shared exploration notes ({} countries, {} words)",
-                        user_id, country_count, total_words
+                        "{} shared exploration notes ({} {}, {} {})",
+                        user_id, country_count, country_label, total_words, word_label
                     ),
                 });
                 (None, notifications)
@@ -298,7 +300,30 @@ mod tests {
         assert!(message.is_none());
         assert_eq!(notifications.len(), 1);
         assert!(notifications[0].message.contains("charlie"));
-        assert!(notifications[0].message.contains("1 countries"));
+        assert!(notifications[0].message.contains("1 country"));
         assert!(notifications[0].message.contains("3 words"));
+    }
+
+    #[test]
+    fn test_send_note_single_word() {
+        let config = make_test_config();
+        let mut room = ChatRoom::new("test_room".to_string(), config);
+        
+        let user_id = "diana".to_string();
+        let country = "D".to_string();
+        room.add_participant(user_id.clone(), country.clone());
+
+        // Send note with single word
+        let mut note_map = HashMap::new();
+        note_map.insert("A".to_string(), vec!["freedom".to_string()]);
+
+        let action = UserAction::SendNote(note_map);
+        let (message, notifications) = room.process_action(&user_id, &country, action);
+
+        assert!(message.is_none());
+        assert_eq!(notifications.len(), 1);
+        assert!(notifications[0].message.contains("diana"));
+        assert!(notifications[0].message.contains("1 country"));
+        assert!(notifications[0].message.contains("1 word"));
     }
 }
