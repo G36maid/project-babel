@@ -6,8 +6,7 @@ use axum::{
     routing::{get, post},
     Json as AxumJson,
 };
-use rand::distr::Alphanumeric;
-use rand::Rng;
+use rand::distr::{Alphanumeric, SampleString};
 use futures::{SinkExt, StreamExt};
 use serde_json::{from_str, to_string};
 use std::collections::HashMap;
@@ -40,11 +39,7 @@ async fn login(
     AxumJson(payload): AxumJson<LoginRequest>,
 ) -> Result<AxumJson<LoginResponse>, StatusCode> {
     // Generate a random token
-    let token: String = rand::rng()
-        .sample_iter(&Alphanumeric)
-        .take(32)
-        .map(char::from)
-        .collect();
+    let token: String = Alphanumeric.sample_string(&mut rand::rng(), 16);
 
     // Insert into tokens_map
     state.tokens_map.insert(token.clone(), (payload.username, payload.country));
