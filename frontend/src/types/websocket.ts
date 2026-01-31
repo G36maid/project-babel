@@ -45,10 +45,10 @@ export interface RoomUpdate {
   room_closed: boolean
 }
 
-// UserAction - matches backend UserAction enum (snake_case, PascalCase variants)
+// UserAction - matches backend UserAction enum (snake_case)
 export type UserAction =
-  | { SendMessage: string }
-  | { LeaveRoom: null }
+  | { send_message: string }
+  | { leave_room: null }
 
 // Connection states
 export type ConnectionState = 'idle' | 'connecting' | 'connected' | 'disconnected' | 'error'

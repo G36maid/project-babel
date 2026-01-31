@@ -1,7 +1,7 @@
 use axum::{
     Json as AxumJson, Router,
     extract::{
-        Path, State, WebSocketUpgrade,
+        Path, Query, State, WebSocketUpgrade,
         ws::{Message, WebSocket},
     },
     http::{HeaderMap, StatusCode},
@@ -10,6 +10,7 @@ use axum::{
 };
 use futures::{SinkExt, StreamExt};
 use rand::distr::{Alphanumeric, SampleString};
+use serde::Deserialize;
 use serde_json::{from_str, to_string};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -27,7 +28,12 @@ pub struct AppState {
     pub tokens_map: HashMap<String, (UserId, CountryCode)>,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(Deserialize)]
+pub struct ConnectQuery {
+    token: String,
+}
+
+#[derive(Deserialize)]
 struct LoginRequest {
     username: String,
     country: String,
@@ -102,6 +108,7 @@ async fn create_room(
 async fn connect_room(
     State(state): State<AppState>,
     Path(room_id): Path<RoomId>,
+    Query(query): Query<ConnectQuery>,
     headers: HeaderMap,
     ws: WebSocketUpgrade,
 ) -> Result<Response, StatusCode> {
@@ -110,13 +117,20 @@ async fn connect_room(
         StatusCode::FORBIDDEN
     })?;
 
+    eprintln!(
+        "User {} ({}) connecting to room {}",
+        user.user_id, user.country, room_id
+    );
+
+    // Get or create room if it doesn't exist (especially for test_room)
     let connector = state
         .room_manager
         .connect_to_room(&room_id)
-        .ok_or_else(|| {
+        .unwrap_or_else(|| {
             warn!(room_id, "Connection attempt to non-existent room");
-            StatusCode::NOT_FOUND
-        })?;
+            let new_room_id = Arc::clone(&state.room_manager).create_room_with_id(room_id.clone());
+            state.room_manager.connect_to_room(&new_room_id).unwrap()
+        });
 
     let user_id = user.user_id.clone();
     info!(room_id, user_id, "User connecting to room");
@@ -154,6 +168,7 @@ async fn handle_participant_socket(
             msg = ws_receiver.next() => {
                 match msg {
                     Some(Ok(Message::Text(text))) => {
+                        eprintln!("Received message from {}: {}", user.user_id, text);
                         if let Ok(action) = from_str::<UserAction>(&text) {
                             debug!(room_id, user_id, ?action, "Received action");
                             let user_message = UserMessage {
@@ -165,6 +180,8 @@ async fn handle_participant_socket(
                                 warn!(room_id, user_id, "Failed to send action");
                                 break;
                             }
+                        } else {
+                            eprintln!("Failed to parse action from: {}", text);
                         }
                     }
                     Some(Ok(Message::Close(_))) | None => {
@@ -185,6 +202,8 @@ async fn handle_participant_socket(
                 match result {
                     Ok(_) => {
                         let update = update_receiver.borrow().clone();
+                        eprintln!("Sending update to {}: {} new messages, {} notifications",
+                            user.user_id, update.new_messages.len(), update.notifications.len());
                         if let Ok(json) = to_string(&update) {
                             if ws_sender.send(Message::Text(json.into())).await.is_err() {
                                 debug!(room_id, user_id, "Failed to send update, closing connection");

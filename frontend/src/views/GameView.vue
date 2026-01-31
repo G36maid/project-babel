@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useGameStore } from '@/stores/game'
+import TelegramLayout from '@/components/layout/TelegramLayout.vue'
+import Sidebar from '@/components/layout/Sidebar.vue'
+import ChatArea from '@/components/layout/ChatArea.vue'
+import ChatHeader from '@/components/chat/ChatHeader.vue'
+import MessageList from '@/components/chat/MessageList.vue'
+import ChatInput from '@/components/chat/ChatInput.vue'
+import SymbolKeyboard from '@/components/symbols/SymbolKeyboard.vue'
 
 const gameStore = useGameStore()
 
@@ -8,12 +15,13 @@ const gameStore = useGameStore()
 const showSymbolKeyboard = ref(false)
 const inputText = ref('')
 const mobileSidebarOpen = ref(false)
-const playerId = ref(`player_${Math.random().toString(36).substr(2, 9)}`)
 
 // Computed
 const messages = computed(() => gameStore.messages)
 const roomState = computed(() => gameStore.roomState)
 const connectionState = computed(() => gameStore.connectionState)
+const playerId = computed(() => gameStore.playerId)
+const playerName = computed(() => gameStore.playerName)
 
 const participants = computed(() => {
   return roomState.value?.participants || []
@@ -21,7 +29,7 @@ const participants = computed(() => {
 
 const roomName = computed(() => {
   if (roomState.value) {
-    return `Room ${roomState.value.room_id}`
+    return `Test Room`
   }
   return 'Connecting...'
 })
@@ -39,11 +47,8 @@ function handleSymbolSelect(emoji: string) {
 
 // Connect on mount
 onMounted(() => {
-  // For demo/development, auto-connect to a test room
-  // In production, this would use proper room joining flow
-  const token = 'test_token'
-  const roomId = 'test_room'
-  gameStore.connect(roomId, token)
+  gameStore.loadPlayerInfo()
+  gameStore.connectToTestRoom()
 })
 </script>
 
