@@ -44,19 +44,19 @@
 
 1. **Clone Repo**
    ```bash
-   git clone [https://github.com/YourUser/project-babel.git](https://github.com/YourUser/project-babel.git)
-   cd project-babel
-   ```
+    git clone https://github.com/YourUser/project-babel.git
+    cd project-babel
+    ```
 
 2. **安裝依賴**
    ```bash
-   cd frontend
-   npm install
+    cd frontend
+    bun install
    ```
 
 3. **啟動開發伺服器**
    ```bash
-   npm run dev
+    bun run dev
    ```
 
    Frontend: `http://localhost:5173`
