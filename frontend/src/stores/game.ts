@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useWebSocket } from '@vueuse/core'
+import { apiClient, getWebSocketUrl } from '@/api/client'
 import type { RoomUpdate, UserAction, ConnectionState, CensoredMessage } from '@/types/websocket'
 
 interface LoginResponse {
@@ -34,15 +35,8 @@ export const useGameStore = defineStore('game', () => {
     connectionState.value = 'connecting'
     console.log('[WebSocket] State: connecting')
 
-    // Determine WebSocket URL based on environment
-    let wsUrl: string
-    if (import.meta.env.DEV) {
-      // Development: connect directly to backend
-      wsUrl = `ws://localhost:3000/api/rooms/${roomId}/connect?token=${token}`
-    } else {
-      // Production: use same host as frontend
-      wsUrl = `ws://${window.location.host}/api/rooms/${roomId}/connect?token=${token}`
-    }
+    // Determine WebSocket URL using VITE_BACKEND_URL if configured
+    const wsUrl = getWebSocketUrl(roomId, token)
     console.log('[WebSocket] Connecting to:', wsUrl)
 
     ws = useWebSocket(wsUrl, {
@@ -137,19 +131,7 @@ export const useGameStore = defineStore('game', () => {
 
   async function login(username: string, country: string): Promise<string> {
     try {
-      const response = await fetch('/api/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ username, country })
-      })
-
-      if (!response.ok) {
-        throw new Error('Login failed')
-      }
-
-      const data: LoginResponse = await response.json()
+      const data = await apiClient.post<LoginResponse>('/login', { username, country })
 
       // Update local state
       playerName.value = username
@@ -178,18 +160,9 @@ export const useGameStore = defineStore('game', () => {
   }
 
   async function createRoom(token: string): Promise<string> {
-    const response = await fetch('/api/rooms', {
-      method: 'POST',
-      headers: {
-        'X-User-Token': token
-      }
+    return await apiClient.post<string>('/rooms', undefined, {
+      'X-User-Token': token
     })
-
-    if (!response.ok) {
-      throw new Error('Failed to create room')
-    }
-
-    return await response.text()
   }
 
   async function ensureTestRoom(_token: string): Promise<void> {
