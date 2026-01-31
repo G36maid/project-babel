@@ -55,13 +55,20 @@ export function getWebSocketUrl(roomId: string, token: string): string {
 export async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const url = getApiUrl(endpoint)
   
-  const defaultOptions: RequestInit = {
-    headers: {
-      'Content-Type': 'application/json',
-    },
+  // Start with default headers
+  const headers = new Headers({
+    'Content-Type': 'application/json',
+  })
+
+  // Merge user provided headers
+  if (options?.headers) {
+    const userHeaders = new Headers(options.headers)
+    userHeaders.forEach((value, key) => {
+      headers.set(key, value)
+    })
   }
   
-  const response = await fetch(url, { ...defaultOptions, ...options })
+  const response = await fetch(url, { ...options, headers })
   
   if (!response.ok) {
     const error = new Error(`API Error: ${response.status} ${response.statusText}`)
