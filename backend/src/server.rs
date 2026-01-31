@@ -24,12 +24,10 @@ use axum::{
     },
     http::{HeaderMap, StatusCode},
     response::{Json, Response},
-    routing::{get, post},
-    Json as AxumJson,
+    routing::{get, post}
 };
 use rand::distr::{Alphanumeric, SampleString};
 use futures::{SinkExt, StreamExt};
-use rand::distr::{Alphanumeric, SampleString};
 use serde::Deserialize;
 use serde_json::{from_str, to_string};
 use std::collections::HashMap;
