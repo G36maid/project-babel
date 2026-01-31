@@ -1,0 +1,29 @@
+/* Telegram Theme CSS Variables */
+
+:root {
+  /* Dark Mode (Default) */
+  --tg-bg: #17212b;
+  --tg-bg-secondary: #232e3c;
+  --tg-bg-chat: #0e1621;
+  --tg-message-out: #2b5278;
+  --tg-message-in: #182533;
+  --tg-text: #f5f5f5;
+  --tg-text-secondary: #708499;
+  --tg-accent: #5288c1;
+  --tg-link: #6ab3f3;
+  --tg-destructive: #ec3942;
+}
+
+[data-theme="light"] {
+  /* Light Mode */
+  --tg-bg: #ffffff;
+  --tg-bg-secondary: #efeff3;
+  --tg-bg-chat: #ffffff;
+  --tg-message-out: #dcf8c6;
+  --tg-message-in: #ffffff;
+  --tg-text: #000000;
+  --tg-text-secondary: #999999;
+  --tg-accent: #2481cc;
+  --tg-link: #2481cc;
+  --tg-destructive: #ec3942;
+}
