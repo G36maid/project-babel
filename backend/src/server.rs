@@ -1,3 +1,21 @@
+use serde::Serialize;
+#[derive(Serialize)]
+struct RoomWordsInfo {
+    allowed_words: Vec<String>,
+    banned_words: std::collections::HashMap<String, Vec<String>>,
+}
+
+// GET /api/rooms/{id}/info - Return allowed and banned words for the room
+async fn get_room_words_info(
+    State(state): State<AppState>,
+    Path(room_id): Path<RoomId>,
+) -> Result<Json<RoomWordsInfo>, StatusCode> {
+    let connector = state.room_manager.connect_to_room(&room_id)
+        .ok_or(StatusCode::NOT_FOUND)?;
+    let allowed_words = (*connector.allowed_words).clone();
+    let banned_words = (*connector.banned_words).clone();
+    Ok(Json(RoomWordsInfo { allowed_words, banned_words }))
+}
 use axum::{
     Router,
     extract::{Path, State, WebSocketUpgrade, ws::{Message, WebSocket}},
@@ -116,6 +134,8 @@ async fn handle_participant_socket(
     let RoomConnector {
         action_sender,
         mut update_receiver,
+        allowed_words: _,
+        banned_words: _,
     } = connector;
 
     // Send initial join action
@@ -219,6 +239,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/rooms", post(create_room))
         .route("/api/rooms/{id}/connect", get(connect_room))
         .route("/api/rooms/{id}/spectate", get(spectate_room))
+        .route("/api/rooms/{id}/info", get(get_room_words_info))
         .route("/api/login", post(login))
         .layer(cors)
         .with_state(state)

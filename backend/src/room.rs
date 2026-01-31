@@ -11,14 +11,14 @@ pub struct ChatRoom {
     participants: Vec<Participant>,
     messages: Vec<Message>,
     message_counter: MessageId,
-    filter: CensorshipFilter,
-    allowed_words: Vec<String>,
+    pub(crate) filter: CensorshipFilter,
+    pub(crate) allowed_words: Vec<String>,
 }
 
 impl ChatRoom {
     pub fn new(room_id: RoomId, config: &'static FilterConfig) -> Self {
         // Load words from words.json
-        let words = load_words("backend/words.json");
+        let words = load_words("words.json");
         let country_codes = ["TW", "CN", "US", "RU"];
         let (allowed_words, banned_map) = generate_allowed_and_banned_words(&words, &country_codes);
         // Clone and update the config's banned_words for this room
