@@ -19,6 +19,7 @@ export interface CensoredMessage {
   sender_id: UserId
   content: string
   was_censored: boolean
+  timestamp?: Timestamp
 }
 
 export interface Participant {

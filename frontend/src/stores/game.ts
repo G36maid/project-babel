@@ -45,7 +45,7 @@ export const useGameStore = defineStore('game', () => {
       onError() {
         connectionState.value = 'error'
       },
-      onMessage(ws, event) {
+      onMessage(_ws, event) {
         try {
           const data = JSON.parse(event.data) as RoomUpdate
           roomState.value = data.room_state
