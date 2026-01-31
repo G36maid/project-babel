@@ -38,6 +38,7 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+.zed/
 *.suo
 *.ntvs*
 *.njsproj
@@ -47,9 +48,9 @@ Thumbs.db
 .cache/
 .project
 
-# Sisyphus (notepad files are tracked, but temp files should be ignored)
-.sisyphus/drafts/
-.sisyphus/backups/
+# AGENTS
+.opencode/
+.sisyphus/
 
 # Build artifacts
 *.tgz
