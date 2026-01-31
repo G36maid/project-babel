@@ -1,56 +1,75 @@
 # 🤖 AGENTS.md - Project Babel Guidelines
 
-> **Context**: This is a Vue 3 + TypeScript + Tailwind CSS frontend project.
-> Note: The project structure implies a Rust backend, but currently only the `frontend/` directory is present/active in this context.
+> **Context**: A multiplayer puzzle game with Vue 3 frontend and Rust (Axum) backend.  
+> **Game**: Players use a symbolic language to communicate across censorship firewalls.
+
+---
 
 ## 🏗️ Build & Run Commands
 
-**Working Directory**: All commands must be run from the `frontend/` directory.
+### Frontend (Vue 3 + TypeScript)
+**Working Directory**: `frontend/`
+
+| Action | Bun (Primary) | npm (Alternative) | Description |
+|--------|---------------|-------------------|-------------|
+| Install | `bun install` | `npm install` | Install dependencies |
+| Dev | `bun run dev` | `npm run dev` | Vite dev server on `localhost:5173` |
+| Build | `bun run build` | `npm run build` | Type check + production build |
+| Preview | `bun run preview` | `npm run preview` | Preview production build |
+| Type Check | `bunx vue-tsc -b` | `npx vue-tsc -b` | TypeScript compiler only |
+
+**Lockfile**: `bun.lock` (text format, git-diffable)  
+**Why Bun?** ~4-6× faster than npm. Both work since they share `package.json`.
+
+### Backend (Rust + Axum)
+**Working Directory**: `backend/` or project root
 
 | Action | Command | Description |
-| :--- | :--- | :--- |
-| **Install** | `npm install` | Install dependencies (uses `package-lock.json` if present, else checks `bun.lock`) |
-| **Dev Server** | `npm run dev` | Starts Vite dev server (default: http://localhost:5173) |
-| **Build** | `npm run build` | Runs type check (`vue-tsc`) and builds for production |
-| **Type Check** | `npx vue-tsc -b` | Runs TypeScript compiler in build mode |
-| **Test** | *None* | No testing framework is currently configured. |
+|--------|---------|-------------|
+| Run | `cargo run` | Start server on `localhost:3000` |
+| Build | `cargo build --release` | Production build |
+| Test | `cargo test` | Run all tests |
+| Test Single | `cargo test test_name` | Run specific test |
+| Check | `cargo check` | Fast compile check |
 
-> **Important**: There is NO `package.json` in the project root. Always `cd frontend` before running npm commands.
+### Development Workflow
+```bash
+# Terminal 1: Start backend
+cd backend && cargo run
+
+# Terminal 2: Start frontend (use Bun for speed)
+cd frontend && bun run dev
+```
+
+**Proxy**: Frontend dev server proxies `/api` and `/socket.io` to backend.
 
 ---
 
 ## 🎨 Code Style & Conventions
 
-### Core Stack
-- **Framework**: Vue 3 (Composition API with `<script setup lang="ts">`)
-- **Language**: TypeScript (Configured as **non-strict**)
-- **Styling**: Tailwind CSS
-- **State**: Pinia
-- **Routing**: Vue Router
+### Frontend (Vue 3 + TypeScript)
 
-### TypeScript Rules
-- **Strictness**: `strict: false` is set in `tsconfig.app.json`.
-  - While type safety is encouraged, do not break existing code by enforcing strict null checks or strict property initialization unless you are refactoring.
-  - Interfaces/Types should be defined in the same file if local, or in `types/` if shared.
-- **Explicit Types**: meaningful types are preferred over `any`, but the config allows implicit `any`.
+**Core Stack**: Vue 3 (Composition API), TypeScript (non-strict), Tailwind CSS, Pinia, Vue Router
 
-### Component Structure (`.vue`)
-Use the `<script setup>` syntax. Order blocks as:
-1. `<script setup lang="ts">`
-2. `<template>`
-3. `<style>` (scoped not mandatory if using Tailwind, but often used for specific overrides)
-
+**Component Structure** (order matters):
 ```vue
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import type { User } from '@/types'
+import { useGameStore } from '@/stores/game'
+import type { GameMessage } from '@/types'
 
-// Props
+// Props with types
 const props = defineProps<{
   title: string
+  playerId?: string
 }>()
 
-// State
+// Emits
+const emit = defineEmits<{
+  join: [playerId: string]
+}>()
+
+// State, computed, methods...
 const count = ref(0)
 </script>
 
@@ -61,34 +80,140 @@ const count = ref(0)
 </template>
 ```
 
-### Styling (Tailwind)
-- Use utility classes primarily.
-- Avoid `@apply` in CSS files unless creating a reusable component class that is used in multiple places.
-- Dynamic classes: Use array syntax or template literals: `:class="['p-4', isActive ? 'bg-blue-500' : 'bg-gray-500']"`
+**TypeScript**: `strict: false` in `tsconfig.app.json`. Prefer explicit types but `any` is allowed.
 
-### Naming Conventions
-- **Files**:
-  - Components: `PascalCase.vue` (e.g., `ChatBox.vue`)
-  - Utilities: `camelCase.ts` or `kebab-case.ts`
-- **Variables/Functions**: `camelCase`
-- **Stores**: `useStoreName` (e.g., `useAuthStore`)
+**Styling**: Use Tailwind utility classes. Dynamic classes: `:class="['p-4', isActive && 'bg-blue-500']"`
+
+### Backend (Rust)
+
+**Core Stack**: Axum, Tokio, Serde, DashMap
+
+**Module Structure**:
+```rust
+// lib.rs - module declarations
+pub mod data;
+pub mod filter;
+pub mod server;
+
+// Individual modules
+use crate::data::*;
+use crate::filter::CensorshipFilter;
+```
+
+**Key Patterns**:
+- Types: Type aliases for IDs (`RoomId = String`)
+- State: `AppState` with `Arc<RoomManager>`
+- Async: `tokio::select!` for concurrent operations
+- Serialization: `serde` with `rename_all = "snake_case"`
+
+**Error Handling**: Use `Result<T, StatusCode>` in Axum handlers. Log with `eprintln!`.
+
+---
+
+## 📝 Naming Conventions
+
+| Type | Pattern | Example |
+|------|---------|---------|
+| Vue Components | PascalCase.vue | `ChatBox.vue` |
+| Vue Views | PascalCase.vue | `HomeView.vue` |
+| Pinia Stores | camelCase.ts | `useGameStore.ts` |
+| Rust Modules | snake_case.rs | `room.rs`, `filter.rs` |
+| Rust Types | PascalCase | `RoomState`, `UserAction` |
+| Rust Functions | snake_case | `process_action()` |
+| Type Aliases | PascalCase | `RoomId`, `UserId` |
+| Constants | UPPER_SNAKE | `MAX_USER_ACTIONS` |
 
 ---
 
 ## 🛠️ Error Handling & Debugging
 
-- **Async/Await**: Always use `try/catch` blocks for async operations (API calls).
-- **Console**: Clean up `console.log` before committing, but `console.error` is acceptable for caught errors.
-- **Vue**: Use `onErrorCaptured` for component-level error handling if needed.
+### Frontend
+```typescript
+// Async operations always use try/catch
+async function connect() {
+  try {
+    await socket.connect()
+  } catch (error) {
+    console.error('Connection failed:', error)
+  }
+}
+```
+- Remove `console.log` before commits
+- Keep `console.error` for caught exceptions
 
-## ⚠️ Repository Quirks
-- **Missing Backend**: The README mentions a Rust backend, but it may not be present in the working tree. Focus on Frontend tasks.
-- **Config Files**: `tsconfig.app.json` controls the app configuration. `tsconfig.json` is just a reference container.
-- **Deps**: `node_modules` exists in root but `package.json` does not. Trust `frontend/package.json`.
+### Backend
+```rust
+// Axum error handling
+async fn handler() -> Result<Json<T>, StatusCode> {
+    let data = get_data().ok_or(StatusCode::NOT_FOUND)?;
+    Ok(Json(data))
+}
+```
+- Use `eprintln!` for server errors
+- Graceful degradation with defaults in `utils.rs`
 
 ---
 
-## 🚀 Workflows for Agents
-1. **Always Check Path**: Verify you are in `frontend/` before running scripts.
-2. **Read Configs**: Check `vite.config.ts` and `tailwind.config.js` before making infrastructure changes.
-3. **No Tests**: Since there are no tests, **manual verification** (via reasoning or asking user) is critical for logic changes.
+## 📁 Project Structure
+
+```
+project-babel/
+├── backend/               # Rust Axum server
+│   ├── src/
+│   │   ├── main.rs        # Entry point
+│   │   ├── lib.rs         # Module declarations
+│   │   ├── server.rs      # HTTP/WebSocket routes
+│   │   ├── room.rs        # Chat room logic
+│   │   ├── manager.rs     # Room lifecycle management
+│   │   ├── filter.rs      # Censorship filter + tests
+│   │   ├── data.rs        # Types and structs
+│   │   └── utils.rs       # File I/O helpers
+│   ├── Cargo.toml
+│   ├── filter_config.json # Censorship rules
+│   └── user_tokens.json   # Auth tokens
+├── frontend/              # Vue 3 frontend
+│   ├── src/
+│   │   ├── views/         # Page components
+│   │   ├── stores/        # Pinia stores
+│   │   ├── router/        # Vue Router config
+│   │   ├── App.vue
+│   │   └── main.ts
+│   ├── bun.lock           # Bun lockfile (text format)
+│   ├── package.json
+│   └── vite.config.ts
+├── Cargo.toml             # Workspace root
+└── README.md
+```
+
+---
+
+## ⚠️ Repository Quirks
+
+1. **No Linting**: No ESLint/Prettier (frontend) or Clippy (backend). Follow conventions manually.
+2. **Frontend Tests**: None configured. Manual verification required.
+3. **Backend Tests**: Unit tests exist in `filter.rs`. Run with `cargo test`.
+4. **TS Config**: `tsconfig.app.json` is active; `tsconfig.json` is a reference container.
+5. **Package Manager**: `bun.lock` is the lockfile (text format). Both Bun and npm work, but Bun is ~4-6× faster.
+6. **Node Modules**: Located in `frontend/node_modules/` after `bun install`.
+
+---
+
+## 🚀 Agent Workflows
+
+1. **Frontend Changes**: Always `cd frontend/` first
+2. **Backend Changes**: Can run from root (workspace) or `backend/`
+3. **Type Safety**: Run `bunx vue-tsc -b` after TS changes; `cargo check` after Rust changes
+4. **Testing**: Describe manual verification steps since test coverage is minimal
+5. **No Type Suppression**: Never use `@ts-ignore`, `as any`, or `unwrap_unchecked()`
+
+---
+
+## 📋 Quick Reference
+
+| Task | Command |
+|------|---------|
+| Start both services | Backend: `cargo run`, Frontend: `bun run dev` |
+| Add Vue component | `src/components/ComponentName.vue` |
+| Add Pinia store | `src/stores/feature.ts` with `useFeatureStore` |
+| Add Rust module | Create `src/module.rs` + add to `lib.rs` |
+| Backend test | `cargo test` or `cargo test filter::tests` |

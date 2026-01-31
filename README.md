@@ -37,7 +37,8 @@
 ## 🚀 快速開始 (Quick Start)
 
 ### 前置需求 (Prerequisites)
-- [Node.js](https://nodejs.org/) (v18+)
+- [Bun](https://bun.sh/) (v1.2+) - Fast JavaScript runtime & package manager
+  - *Alternative: [Node.js](https://nodejs.org/) v18+ with npm also works*
 - [Rust](https://www.rust-lang.org/) (Latest Stable)
 
 ### 安裝與執行 (Development)
@@ -48,20 +49,21 @@
     cd project-babel
     ```
 
-2. **安裝依賴**
+2. **安裝依賴** (Bun is ~4-6× faster)
    ```bash
     cd frontend
     bun install
    ```
+   
+   *Note: `npm install` also works if you prefer npm*
 
 3. **啟動開發伺服器**
    ```bash
     bun run dev
    ```
 
-   Frontend: `http://localhost:5173`
-
-   *Note: Backend will be added in a future update.*
+   Frontend: `http://localhost:5173`  
+   Backend: `http://localhost:3000` (run `cargo run` in `/backend`)
 
 
 
