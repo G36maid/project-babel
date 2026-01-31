@@ -3,15 +3,7 @@ import { RouterView } from 'vue-router'
 </script>
 
 <template>
-  <div id="app" class="min-h-screen bg-gray-900 text-white">
+  <div id="app" class="min-h-screen bg-gray-900 text-white max-w-7xl mx-auto p-8">
     <RouterView />
   </div>
 </template>
-
-<style>
-#app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-}
-</style>
