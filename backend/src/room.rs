@@ -18,7 +18,7 @@ pub struct ChatRoom {
     pub receiver_censor: bool,
     pub shadow_ban: bool,
     pub allowed: HashSet<String>,
-    player_notes: HashMap<UserId, HashMap<CountryCode, Vec<String>>>,
+    pub(crate) player_notes: HashMap<UserId, HashMap<CountryCode, Vec<String>>>,
 }
 
 impl ChatRoom {
