@@ -1,4 +1,5 @@
 use std::time::{SystemTime, UNIX_EPOCH};
+use std::collections::HashSet;
 
 use crate::data::*;
 use crate::filter::CensorshipFilter;
@@ -13,6 +14,10 @@ pub struct ChatRoom {
     message_counter: MessageId,
     pub(crate) filter: CensorshipFilter,
     pub(crate) allowed_words: Vec<String>,
+    pub sender_censor: bool,
+    pub receiver_censor: bool,
+    pub shadow_ban: bool,
+    pub allowed: HashSet<String>,
 }
 
 impl ChatRoom {
@@ -35,6 +40,10 @@ impl ChatRoom {
             message_counter: 0,
             filter: CensorshipFilter::new(config_ref),
             allowed_words,
+            sender_censor: true,
+            receiver_censor: true,
+            shadow_ban: true,
+            allowed: HashSet::new(),
         }
     }
 
@@ -136,8 +145,14 @@ impl ChatRoom {
             .messages
             .iter()
             .map(|msg| {
-                let (content, was_censored) =
-                    self.filter.censor_message(&msg.content, &msg.sender_country, country);
+                let sender = if self.sender_censor && !self.allowed.contains(&msg.sender_country) { Some(&msg.sender_country) } else { None };
+                let receiver = if self.receiver_censor && !self.allowed.contains(country) { Some(country) } else { None };
+                // shadow_ban: if sender==receiver, skip censorship
+                let (content, was_censored) = if self.shadow_ban && &msg.sender_country == country {
+                    (msg.content.clone(), false)
+                } else {
+                    self.filter.censor_message(&msg.content, sender, receiver)
+                };
                 CensoredMessage {
                     id: msg.id,
                     sender_id: msg.sender_id.clone(),
@@ -156,8 +171,13 @@ impl ChatRoom {
 
     /// Censor a single message for a specific country
     pub fn censor_message_for(&self, message: &Message, country: &CountryCode) -> CensoredMessage {
-        let (content, was_censored) =
-            self.filter.censor_message(&message.content, &message.sender_country, country);
+        let sender = if self.sender_censor && !self.allowed.contains(&message.sender_country) { Some(&message   .sender_country) } else { None };
+        let receiver = if self.receiver_censor && !self.allowed.contains(country) { Some(country) } else { None };
+        let (content, was_censored) = if self.shadow_ban && &message.sender_country == country {
+            (message.content.clone(), false)
+        } else {
+            self.filter.censor_message(&message.content, sender, receiver)
+        };
         CensoredMessage {
             id: message.id,
             sender_id: message.sender_id.clone(),
