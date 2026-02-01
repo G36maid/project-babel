@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useWebSocket } from '@vueuse/core'
 import { apiClient, getWebSocketUrl } from '@/api/client'
-import type { RoomUpdate, UserAction, ConnectionState, CensoredMessage } from '@/types/websocket'
+import type { RoomUpdate, UserAction, ConnectionState, CensoredMessage, RoomWordsInfo } from '@/types/websocket'
 
 interface LoginResponse {
   token: string
@@ -21,12 +21,30 @@ export const useGameStore = defineStore('game', () => {
   const currentRoomId = ref('')
   const roomState = ref<RoomUpdate['room_state'] | null>(null)
   const notifications = ref<string[]>([])
+  const allowedWords = ref<string[]>([])
+  const bannedWords = ref<Record<string, string[]>>({})
 
   // WebSocket instance (will be set in connect)
   let ws: ReturnType<typeof useWebSocket> | null = null
 
   function generateRoomId() {
     return Math.random().toString(36).substring(2, 10)
+  }
+
+  async function fetchRoomWordsInfo(roomId: string) {
+    try {
+      const data = await apiClient.get<RoomWordsInfo>(`/rooms/${roomId}/info`)
+      allowedWords.value = data.allowed_words
+      bannedWords.value = data.banned_words
+      console.log('[Store] Fetched room words:', { 
+        allowedCount: data.allowed_words.length,
+        bannedCountries: Object.keys(data.banned_words).length
+      })
+    } catch (err) {
+      console.error('[Store] Failed to fetch room words info:', err)
+      allowedWords.value = []
+      bannedWords.value = {}
+    }
   }
 
   function connect(roomId: string, token: string) {
@@ -40,6 +58,8 @@ export const useGameStore = defineStore('game', () => {
 
     connectionState.value = 'connecting'
     console.log('[WebSocket] State: connecting')
+
+    fetchRoomWordsInfo(roomId)
 
     // Determine WebSocket URL using VITE_BACKEND_URL if configured
     const wsUrl = getWebSocketUrl(roomId, token)
@@ -124,6 +144,8 @@ export const useGameStore = defineStore('game', () => {
     messages.value = []
     roomState.value = null
     notifications.value = []
+    allowedWords.value = []
+    bannedWords.value = {}
   }
 
   function setPlayerInfo(name: string, token: string) {
@@ -199,6 +221,8 @@ export const useGameStore = defineStore('game', () => {
     currentRoomId,
     roomState,
     notifications,
+    allowedWords,
+    bannedWords,
     connect,
     sendMessage,
     leaveRoom,

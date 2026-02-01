@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useSymbols } from '@/composables/useSymbols'
+import { useGameStore } from '@/stores/game'
 import SymbolRenderer from './SymbolRenderer.vue'
 
 const props = defineProps<{
@@ -13,11 +14,20 @@ const emit = defineEmits<{
 }>()
 
 const { getAllSymbols } = useSymbols()
+const gameStore = useGameStore()
 
-// Get all available symbols from composable
+// Get all available symbols from composable, filtered by allowed words
 const allSymbols = computed(() => {
   const symbolsRecord = getAllSymbols()
-  return Object.keys(symbolsRecord)
+  const allSymbolWords = Object.keys(symbolsRecord)
+  
+  // If no allowed words are set yet, show all symbols (fallback behavior)
+  if (gameStore.allowedWords.length === 0) {
+    return allSymbolWords
+  }
+  
+  // Filter symbols to only show allowed words
+  return allSymbolWords.filter(word => gameStore.allowedWords.includes(word))
 })
 
 function onSymbolClick(word: string) {

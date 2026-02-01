@@ -68,3 +68,9 @@ export type UserAction =
 
 // Connection states
 export type ConnectionState = 'idle' | 'connecting' | 'connected' | 'disconnected' | 'error'
+
+// Room words info - from /api/rooms/{id}/info
+export interface RoomWordsInfo {
+  allowed_words: string[]
+  banned_words: Record<string, string[]>
+}
