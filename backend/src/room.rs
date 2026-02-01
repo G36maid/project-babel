@@ -76,7 +76,7 @@ impl ChatRoom {
             message_counter: 0,
             filter: CensorshipFilter::new(config_ref),
             allowed_words,
-            sender_censor: true,
+            sender_censor: false,
             receiver_censor: true,
             shadow_ban: true,
             allowed: HashSet::new(),
