@@ -17,8 +17,6 @@ pub struct RoomRunner {
 pub struct RoomConnector {
     pub action_sender: mpsc::Sender<UserMessage>,
     pub update_receiver: watch::Receiver<RoomUpdate>,
-    pub allowed_words: Arc<Vec<String>>,
-    pub banned_words: Arc<std::collections::HashMap<String, Vec<String>>>,
     pub room: Arc<Mutex<ChatRoom>>,
 }
 
@@ -159,15 +157,6 @@ impl RoomManager {
 
         eprintln!("Created room {}", &room_id);
 
-        let allowed_words = {
-            let room = room.lock().unwrap();
-            Arc::new(room.allowed_words.clone())
-        };
-        let banned_words = {
-            let room = room.lock().unwrap();
-            Arc::new(room.filter.config.banned_words.clone())
-        };
-
         let room_runner = RoomRunner {
             room: Arc::clone(&room),
             action_receiver,
@@ -179,8 +168,6 @@ impl RoomManager {
         let room_connector = RoomConnector {
             action_sender,
             update_receiver,
-            allowed_words,
-            banned_words,
             room: Arc::clone(&room),
         };
         self.active_rooms.insert(room_id.clone(), room_connector);

@@ -16,8 +16,9 @@ async fn get_room_words_info(
         .room_manager
         .connect_to_room(&room_id)
         .ok_or(StatusCode::NOT_FOUND)?;
-    let allowed_words = (*connector.allowed_words).clone();
-    let banned_words = (*connector.banned_words).clone();
+    let room = connector.room.lock().unwrap();
+    let allowed_words = room.allowed_words.clone();
+    let banned_words = room.filter.config.banned_words.clone();
     Ok(Json(RoomWordsInfo {
         allowed_words,
         banned_words,
@@ -176,8 +177,6 @@ async fn handle_participant_socket(
     let RoomConnector {
         action_sender,
         mut update_receiver,
-        allowed_words: _,
-        banned_words: _,
         room: _,
     } = connector;
 
