@@ -55,13 +55,13 @@ function onClose() {
     </div>
     
     <!-- Compact Grid with Max Height -->
-    <div class="overflow-y-auto max-h-48 px-2 pb-2">
-      <div class="grid grid-cols-8 gap-1">
+    <div class="overflow-x-auto overflow-y-auto max-h-48 px-2 pb-2">
+      <div class="flex flex-wrap gap-1">
         <button
           v-for="word in allSymbols"
           :key="word"
           @click="onSymbolClick(word)"
-          class="aspect-square flex items-center justify-center bg-[var(--tg-bg)] hover:bg-[var(--tg-bg-chat)] rounded transition-colors"
+          class="w-20 h-20 flex-shrink-0 flex items-center justify-center bg-[var(--tg-bg)] hover:bg-[var(--tg-bg-chat)] rounded transition-colors"
           :title="word"
         >
           <SymbolRenderer :word="word" :size="20" />
