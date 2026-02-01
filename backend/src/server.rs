@@ -178,6 +178,7 @@ async fn handle_participant_socket(
         mut update_receiver,
         allowed_words: _,
         banned_words: _,
+        room: _,
     } = connector;
 
     let user_id = &user.user_id;
