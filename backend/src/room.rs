@@ -335,10 +335,7 @@ mod tests {
         let mut banned_words = HashMap::new();
         banned_words.insert("A".to_string(), vec!["freedom".to_string()]);
         banned_words.insert("B".to_string(), vec!["monarchy".to_string()]);
-        Box::leak(Box::new(FilterConfig {
-            banned_words,
-            replacement: "***".to_string(),
-        }))
+        Box::leak(Box::new(FilterConfig { banned_words }))
     }
 
     #[test]
