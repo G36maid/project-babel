@@ -6,6 +6,17 @@ export type MessageId = number
 export type CountryCode = string
 export type Timestamp = number
 
+export const COUNTRY_NAMES: Record<string, string> = {
+  'A': 'Veridia',
+  'B': 'Aethelgard',
+  'C': 'Orynthia',
+  'D': 'Kaelis'
+}
+
+export function getCountryName(code: string): string {
+  return COUNTRY_NAMES[code] || code
+}
+
 export interface Message {
   id: MessageId
   sender_id: UserId

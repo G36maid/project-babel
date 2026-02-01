@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Participant } from '@/types/websocket'
+import { getCountryName } from '@/types/websocket'
 
 const props = defineProps<{
   roomName?: string
@@ -34,7 +35,7 @@ const props = defineProps<{
             Player {{ participant.user_id.slice(-4) }}
           </div>
           <div class="text-[var(--tg-text-secondary)] text-sm">
-            {{ participant.country }}
+            {{ getCountryName(participant.country) }}
           </div>
         </div>
       </div>

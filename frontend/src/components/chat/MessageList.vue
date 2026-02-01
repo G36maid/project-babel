@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue'
 import type { CensoredMessage, Participant } from '@/types/websocket'
+import { getCountryName } from '@/types/websocket'
 import MessageBubble from './MessageBubble.vue'
 
 const props = defineProps<{
@@ -17,7 +18,7 @@ function isOwnMessage(message: CensoredMessage): boolean {
 
 function getPlayerCountry(senderId: string): string {
   const participant = props.participants.find(p => p.user_id === senderId)
-  return participant?.country || 'Unknown'
+  return participant ? getCountryName(participant.country) : 'Unknown'
 }
 
 // Auto-scroll to bottom on new messages
