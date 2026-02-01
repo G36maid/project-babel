@@ -446,4 +446,217 @@ mod tests {
         // Verify we only have one entry per user
         assert_eq!(room.get_player_notes().len(), 1);
     }
+
+    /// Creates a ChatRoom with controlled censorship settings for testing.
+    /// Uses a simple filter config where:
+    /// - Country "A" has "freedom" banned
+    /// - Country "B" has "monarchy" banned
+    fn make_censorship_test_room() -> ChatRoom {
+        let config = make_test_config();
+        let room = ChatRoom {
+            room_id: "test_room".to_string(),
+            config,
+            participants: Vec::new(),
+            messages: Vec::new(),
+            message_counter: 0,
+            filter: CensorshipFilter::new(config),
+            allowed_words: vec![
+                "hello".to_string(),
+                "freedom".to_string(),
+                "monarchy".to_string(),
+                "world".to_string(),
+            ],
+            sender_censor: false,
+            receiver_censor: true,
+            shadow_ban: true,
+            allowed: HashSet::new(),
+            player_notes: HashMap::new(),
+        };
+        room
+    }
+
+    #[test]
+    fn test_receiver_censorship_censors_banned_words() {
+        let mut room = make_censorship_test_room();
+        room.receiver_censor = true;
+        room.sender_censor = false;
+        room.shadow_ban = false;
+
+        // User from country C sends "freedom" (banned in A)
+        room.add_participant("alice".to_string(), "C".to_string());
+        let action = UserAction::SendMessage("freedom".to_string());
+        let (msg, _) = room.process_action(&"alice".to_string(), &"C".to_string(), action);
+        let message = msg.unwrap();
+
+        // When viewed by country A, "freedom" should be censored
+        let censored = room.censor_message_for(&message, &"A".to_string());
+        assert!(censored.was_censored);
+        assert_eq!(censored.content, "***");
+
+        // When viewed by country B, "freedom" should NOT be censored
+        let uncensored = room.censor_message_for(&message, &"B".to_string());
+        assert!(!uncensored.was_censored);
+        assert_eq!(uncensored.content, "freedom");
+    }
+
+    #[test]
+    fn test_sender_censorship_censors_based_on_sender_country() {
+        let mut room = make_censorship_test_room();
+        room.receiver_censor = false;
+        room.sender_censor = true;
+        room.shadow_ban = false;
+
+        // User from country A sends "freedom" (banned in A)
+        room.add_participant("alice".to_string(), "A".to_string());
+        let action = UserAction::SendMessage("freedom".to_string());
+        let (msg, _) = room.process_action(&"alice".to_string(), &"A".to_string(), action);
+        let message = msg.unwrap();
+
+        // When viewed by anyone, "freedom" should be censored because sender is from A
+        let censored = room.censor_message_for(&message, &"C".to_string());
+        assert!(censored.was_censored);
+        assert_eq!(censored.content, "***");
+
+        // User from country B sends "freedom" (not banned in B)
+        let action2 = UserAction::SendMessage("freedom".to_string());
+        let (msg2, _) = room.process_action(&"alice".to_string(), &"B".to_string(), action2);
+        let message2 = msg2.unwrap();
+
+        // Should NOT be censored because sender B doesn't have "freedom" banned
+        let uncensored = room.censor_message_for(&message2, &"C".to_string());
+        assert!(!uncensored.was_censored);
+        assert_eq!(uncensored.content, "freedom");
+    }
+
+    #[test]
+    fn test_shadow_ban_shows_own_messages_uncensored() {
+        let mut room = make_censorship_test_room();
+        room.receiver_censor = true;
+        room.sender_censor = false;
+        room.shadow_ban = true;
+
+        // User from country A sends "freedom" (banned in A)
+        room.add_participant("alice".to_string(), "A".to_string());
+        let action = UserAction::SendMessage("freedom".to_string());
+        let (msg, _) = room.process_action(&"alice".to_string(), &"A".to_string(), action);
+        let message = msg.unwrap();
+
+        // When viewed by the sender (country A), message should be uncensored
+        let own_view = room.censor_message_for(&message, &"A".to_string());
+        assert!(!own_view.was_censored);
+        assert_eq!(own_view.content, "freedom");
+
+        // When viewed by another country A user, it would normally be censored
+        // but shadow_ban only applies when sender_country == viewer_country
+        // So another A viewer sees it censored
+        // Actually, let's test with shadow_ban = false to see the difference
+        room.shadow_ban = false;
+        let other_view = room.censor_message_for(&message, &"A".to_string());
+        assert!(other_view.was_censored);
+        assert_eq!(other_view.content, "***");
+    }
+
+    #[test]
+    fn test_allowed_countries_bypass_censorship() {
+        let mut room = make_censorship_test_room();
+        room.receiver_censor = true;
+        room.sender_censor = true;
+        room.shadow_ban = false;
+        room.allowed.insert("A".to_string());
+
+        // User from country A sends "freedom" (banned in A, but A is in allowed)
+        room.add_participant("alice".to_string(), "A".to_string());
+        let action = UserAction::SendMessage("freedom".to_string());
+        let (msg, _) = room.process_action(&"alice".to_string(), &"A".to_string(), action);
+        let message = msg.unwrap();
+
+        // Sender censorship should be bypassed for country A
+        let view_by_b = room.censor_message_for(&message, &"B".to_string());
+        assert!(!view_by_b.was_censored);
+
+        // Receiver censorship should also be bypassed when viewer is A
+        let view_by_a = room.censor_message_for(&message, &"A".to_string());
+        assert!(!view_by_a.was_censored);
+    }
+
+    #[test]
+    fn test_get_censored_state_applies_per_country_view() {
+        let mut room = make_censorship_test_room();
+        room.receiver_censor = true;
+        room.sender_censor = false;
+        room.shadow_ban = false;
+
+        room.add_participant("alice".to_string(), "C".to_string());
+        room.add_participant("bob".to_string(), "A".to_string());
+
+        // Send messages with words banned in different countries
+        let action1 = UserAction::SendMessage("freedom".to_string()); // banned in A
+        room.process_action(&"alice".to_string(), &"C".to_string(), action1);
+
+        let action2 = UserAction::SendMessage("monarchy".to_string()); // banned in B
+        room.process_action(&"alice".to_string(), &"C".to_string(), action2);
+
+        // Get state for country A - "freedom" should be censored
+        let state_a = room.get_censored_state_for(&"A".to_string());
+        assert_eq!(state_a.recent_messages.len(), 2);
+        assert_eq!(state_a.recent_messages[0].content, "***"); // freedom censored
+        assert_eq!(state_a.recent_messages[1].content, "monarchy"); // monarchy visible
+
+        // Get state for country B - "monarchy" should be censored
+        let state_b = room.get_censored_state_for(&"B".to_string());
+        assert_eq!(state_b.recent_messages[0].content, "freedom"); // freedom visible
+        assert_eq!(state_b.recent_messages[1].content, "***"); // monarchy censored
+
+        // Get state for country C - nothing censored (no banned words for C)
+        let state_c = room.get_censored_state_for(&"C".to_string());
+        assert_eq!(state_c.recent_messages[0].content, "freedom");
+        assert_eq!(state_c.recent_messages[1].content, "monarchy");
+    }
+
+    #[test]
+    fn test_combined_sender_and_receiver_censorship() {
+        let mut room = make_censorship_test_room();
+        room.receiver_censor = true;
+        room.sender_censor = true;
+        room.shadow_ban = false;
+
+        room.add_participant("alice".to_string(), "A".to_string());
+
+        // User from A sends "monarchy" (banned in B, not A)
+        let action = UserAction::SendMessage("monarchy".to_string());
+        let (msg, _) = room.process_action(&"alice".to_string(), &"A".to_string(), action);
+        let message = msg.unwrap();
+
+        // Viewed by B: receiver_censor applies (monarchy banned in B)
+        let view_b = room.censor_message_for(&message, &"B".to_string());
+        assert!(view_b.was_censored);
+
+        // Viewed by C: no censorship (not banned for sender A or receiver C)
+        let view_c = room.censor_message_for(&message, &"C".to_string());
+        assert!(!view_c.was_censored);
+    }
+
+    #[test]
+    fn test_no_censorship_when_both_flags_disabled() {
+        let mut room = make_censorship_test_room();
+        room.receiver_censor = false;
+        room.sender_censor = false;
+        room.shadow_ban = false;
+
+        room.add_participant("alice".to_string(), "A".to_string());
+
+        // User from A sends "freedom" (normally banned in A)
+        let action = UserAction::SendMessage("freedom".to_string());
+        let (msg, _) = room.process_action(&"alice".to_string(), &"A".to_string(), action);
+        let message = msg.unwrap();
+
+        // Should not be censored for anyone
+        let view_a = room.censor_message_for(&message, &"A".to_string());
+        assert!(!view_a.was_censored);
+        assert_eq!(view_a.content, "freedom");
+
+        let view_b = room.censor_message_for(&message, &"B".to_string());
+        assert!(!view_b.was_censored);
+        assert_eq!(view_b.content, "freedom");
+    }
 }
