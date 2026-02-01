@@ -70,12 +70,22 @@ impl ChatRoom {
                 .insert(country.clone(), banned.clone());
         }
         let config_ref: &'static FilterConfig = Box::leak(Box::new(config_owned));
+        
+        // Create initial game instructions message
+        let game_instructions = Message {
+            id: 1,
+            sender_id: "SYSTEM".to_string(),
+            sender_country: "".to_string(),
+            content: "Welcome to Project Babel! You are trying to communicate across a censorship firewall. Each country has different words that are banned. Work together to discover which words are censored for each country using the allowed symbols. Good luck!".to_string(),
+            timestamp: Self::current_timestamp(),
+        };
+        
         Self {
             room_id,
             config: config_ref,
             participants: Vec::new(),
-            messages: Vec::new(),
-            message_counter: 0,
+            messages: vec![game_instructions],
+            message_counter: 1,
             filter: CensorshipFilter::new(config_ref),
             allowed_words,
             sender_censor: false,
@@ -244,6 +254,16 @@ impl ChatRoom {
             original_content = %message.content,
             "Processing message censorship"
         );
+
+        // System messages are never censored
+        if message.sender_id == "SYSTEM" {
+            return CensoredMessage {
+                id: message.id,
+                sender_id: message.sender_id.clone(),
+                content: message.content.clone(),
+                was_censored: false,
+            };
+        }
 
         let sender = if self.sender_censor && !self.allowed.contains(&message.sender_country) {
             trace!(
