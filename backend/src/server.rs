@@ -4,20 +4,30 @@ async fn solve_room_with_note(
     Path(room_id): Path<RoomId>,
     headers: HeaderMap,
 ) -> Result<Json<SolveResponse>, StatusCode> {
-    let user = extract_user_from_headers(&headers, &state.tokens_map)
+    let _user = extract_user_from_headers(&headers, &state.tokens_map)
         .ok_or(StatusCode::FORBIDDEN)?;
     let connector = state.room_manager.connect_to_room(&room_id)
         .ok_or(StatusCode::NOT_FOUND)?;
     let mut room = connector.room.lock().unwrap();
-    // 只用當前 user 的 player note 作為 answer
-    let answer = room.player_notes.get(&user.user_id).cloned().unwrap_or_default();
-    Ok(Json(solve_answer(&mut room, &user.user_id, answer)))
+    // 所有玩家的 player note 都要答對才算勝利
+    let notes: Vec<_> = room.player_notes.values().cloned().collect();
+    let mut all_correct = true;
+    for note in notes {
+        if !solve_answer(&mut room, note) {
+            all_correct = false;
+            break;
+        }
+    }
+    if all_correct {
+        room.win();
+    }
+    Ok(Json(SolveResponse { solved: all_correct }))
 }
 // Helper for answer checking and success action, used by both solve_room and solve_room_with_note
-fn solve_answer(room: &mut crate::room::ChatRoom, user_id: &str, answer: HashMap<String, Vec<String>>) -> SolveResponse {
+fn solve_answer(room: &mut crate::room::ChatRoom, answer: HashMap<String, Vec<String>>) -> bool {
     let banned_words = &room.filter.config.banned_words;
     if answer.len() != banned_words.len() {
-        return SolveResponse { solved: false };
+        return false;
     }
     for (country, submitted) in &answer {
         match banned_words.get(country) {
@@ -25,27 +35,13 @@ fn solve_answer(room: &mut crate::room::ChatRoom, user_id: &str, answer: HashMap
                 let s1: std::collections::HashSet<_> = submitted.iter().collect();
                 let s2: std::collections::HashSet<_> = expected.iter().collect();
                 if s1 != s2 {
-                    return SolveResponse { solved: false };
+                    return false;
                 }
             }
-            None => return SolveResponse { solved: false },
+            None => return false,
         }
     }
-    // If correct, send system message and add all countries to allowed
-    let msg = format!("[SYSTEM] {} solved the censorship puzzle!", user_id);
-    room.message_counter += 1;
-    let counter = room.message_counter;
-    room.messages.push(crate::data::Message {
-        id: counter,
-        sender_id: "SYSTEM".to_string(),
-        sender_country: "".to_string(),
-        content: msg,
-        timestamp: crate::room::ChatRoom::current_timestamp(),
-    });
-    for country in banned_words.keys() {
-        room.allowed.insert(country.clone());
-    }
-    SolveResponse { solved: true }
+    true
 }
 use std::collections::HashMap;
 #[derive(Deserialize)]
@@ -67,12 +63,16 @@ async fn solve_room(
     headers: HeaderMap, // 新增
     AxumJson(payload): AxumJson<SolveRequest>,
 ) -> Result<Json<SolveResponse>, StatusCode> {
-    let user = extract_user_from_headers(&headers, &state.tokens_map)
+    let _user = extract_user_from_headers(&headers, &state.tokens_map)
         .ok_or(StatusCode::FORBIDDEN)?;
     let connector = state.room_manager.connect_to_room(&room_id)
         .ok_or(StatusCode::NOT_FOUND)?;
     let mut room = connector.room.lock().unwrap();
-    Ok(Json(solve_answer(&mut room, &user.user_id, payload.answer)))
+    let result = solve_answer(&mut room, payload.answer);
+    if result {
+        room.win();
+    }
+    Ok(Json(SolveResponse { solved: result }))
 }
 use futures::SinkExt;
 use futures::StreamExt;

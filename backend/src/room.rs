@@ -86,6 +86,21 @@ impl ChatRoom {
         }
     }
 
+    pub fn win(&mut self) {
+        let msg = format!("[SYSTEM] Censorship puzzle is finished!");
+        self.message_counter += 1;
+        self.messages.push(crate::data::Message {
+            id: self.message_counter,
+            sender_id: "SYSTEM".to_string(),
+            sender_country: "".to_string(),
+            content: msg,
+            timestamp: Self::current_timestamp(),
+        });
+        for country in self.config.banned_words.keys() {
+            self.allowed.insert(country.clone());
+        }
+    }
+
     pub fn current_timestamp() -> Timestamp {
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
