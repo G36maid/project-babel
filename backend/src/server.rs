@@ -40,7 +40,7 @@ async fn solve_room(
             None => return Ok(Json(SolveResponse { solved: false })),
         }
     }
-    // If correct, send system message
+    // If correct, send system message and add all countries to allowed
     let msg = format!("[SYSTEM] {} solved the censorship puzzle!", user.user_id);
     room.message_counter += 1;
     let counter = room.message_counter;
@@ -51,6 +51,9 @@ async fn solve_room(
         content: msg,
         timestamp: crate::room::ChatRoom::current_timestamp(),
     });
+    for country in banned_words.keys() {
+        room.allowed.insert(country.clone());
+    }
     Ok(Json(SolveResponse { solved: true }))
 }
 use futures::SinkExt;
