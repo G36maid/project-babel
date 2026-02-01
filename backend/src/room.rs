@@ -37,9 +37,9 @@ pub struct ChatRoom {
     /// List of participants currently in the room.
     participants: Vec<Participant>,
     /// All messages sent in this room.
-    messages: Vec<Message>,
+    pub(crate) messages: Vec<Message>,
     /// Counter for generating unique message IDs.
-    message_counter: MessageId,
+    pub(crate) message_counter: MessageId,
     /// The censorship filter that processes messages based on country rules.
     pub(crate) filter: CensorshipFilter,
     /// Words that participants are allowed to use in messages.
@@ -86,7 +86,7 @@ impl ChatRoom {
         }
     }
 
-    fn current_timestamp() -> Timestamp {
+    pub fn current_timestamp() -> Timestamp {
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()

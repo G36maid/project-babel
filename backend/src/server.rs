@@ -1,3 +1,59 @@
+use std::collections::HashMap;
+#[derive(Deserialize)]
+struct SolveRequest(HashMap<String, Vec<String>>);
+
+#[derive(Serialize)]
+struct SolveResponse {
+    solved: bool,
+}
+// POST /api/rooms/{id}/solve - Check if submitted banned words match exactly
+#[derive(Deserialize)]
+struct SolveUser {
+    user: String,
+    answer: HashMap<String, Vec<String>>,
+}
+
+// POST /api/rooms/{id}/solve - Check if submitted banned words match exactly, and send system message if correct
+async fn solve_room(
+    State(state): State<AppState>,
+    Path(room_id): Path<RoomId>,
+    headers: HeaderMap, // 新增
+    AxumJson(payload): AxumJson<SolveUser>,
+) -> Result<Json<SolveResponse>, StatusCode> {
+    let user = extract_user_from_headers(&headers, &state.tokens_map)
+        .ok_or(StatusCode::FORBIDDEN)?;
+    let connector = state.room_manager.connect_to_room(&room_id)
+        .ok_or(StatusCode::NOT_FOUND)?;
+    let mut room = connector.room.lock().unwrap();
+    let banned_words = &room.filter.config.banned_words;
+    // Check if country sets match
+    if payload.answer.len() != banned_words.len() {
+        return Ok(Json(SolveResponse { solved: false }));
+    }
+    for (country, submitted) in &payload.answer {
+        match banned_words.get(country) {
+            Some(expected) => {
+                let s1: std::collections::HashSet<_> = submitted.iter().collect();
+                let s2: std::collections::HashSet<_> = expected.iter().collect();
+                if s1 != s2 {
+                    return Ok(Json(SolveResponse { solved: false }));
+                }
+            }
+            None => return Ok(Json(SolveResponse { solved: false })),
+        }
+    }
+    // If correct, send system message
+    let msg = format!("[SYSTEM] {} solved the censorship puzzle!", user.user_id);
+    room.message_counter += 1;
+    room.messages.push(crate::data::Message {
+        id: room.message_counter,
+        sender_id: "SYSTEM".to_string(),
+        sender_country: "".to_string(),
+        content: msg,
+        timestamp: crate::room::ChatRoom::current_timestamp(),
+    });
+    Ok(Json(SolveResponse { solved: true }))
+}
 use futures::SinkExt;
 use futures::StreamExt;
 use serde::Serialize;
@@ -304,6 +360,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/rooms/{id}/connect", get(connect_room))
         .route("/api/rooms/{id}/spectate", get(spectate_room))
         .route("/api/rooms/{id}/info", get(get_room_words_info))
+        .route("/api/rooms/{id}/solve", post(solve_room))
         .route("/api/login", post(login))
         .layer(TraceLayer::new_for_http())
         .layer(cors)
