@@ -94,7 +94,26 @@ export const useGameStore = defineStore('game', () => {
           const data = JSON.parse(event.data) as RoomUpdate
           console.log('[WebSocket] Parsed data:', data)
           roomState.value = data.room_state
+          
+          // Initialize messages from room state if this is the first update
+          if (messages.value.length === 0 && data.room_state.recent_messages.length > 0) {
+            messages.value = [...data.room_state.recent_messages]
+          }
+          
+          // Add new messages
           messages.value.push(...data.new_messages)
+          
+          // Convert notifications to system messages
+          if (data.notifications && data.notifications.length > 0) {
+            const notificationMessages: CensoredMessage[] = data.notifications.map((n, index) => ({
+              id: Date.now() + index, // Use timestamp-based ID for notifications
+              sender_id: 'SYSTEM',
+              content: n.message,
+              was_censored: false
+            }))
+            messages.value.push(...notificationMessages)
+          }
+          
           notifications.value.push(...data.notifications.map(n => n.message))
 
           if (data.room_closed) {
