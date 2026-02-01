@@ -152,7 +152,8 @@ use crate::filter::CensorshipFilter;
 
 **Key Patterns**:
 - Types: Type aliases for IDs (`RoomId = String`)
-- State: `AppState` with `Arc<RoomManager>`
+- State: `AppState` with `Arc<RoomManager>`; `RoomConnector` shares `Arc<Mutex<ChatRoom>>`
+- Censorship: Dynamic rules loaded from `words.json` via `words.rs`
 - Async: `tokio::select!` for concurrent operations
 - Serialization: `serde` with `rename_all = "snake_case"`
 
@@ -215,22 +216,32 @@ project-babel/
 │   │   ├── server.rs      # HTTP/WebSocket routes
 │   │   ├── room.rs        # Chat room logic
 │   │   ├── manager.rs     # Room lifecycle management
-│   │   ├── filter.rs      # Censorship filter + tests
+│   │   ├── filter.rs      # Censorship filter logic
+│   │   ├── words.rs       # Word list loading & generation
 │   │   ├── data.rs        # Types and structs
 │   │   └── utils.rs       # File I/O helpers
 │   ├── Cargo.toml
-│   └── filter_config.json # Censorship rules
+│   └── words.json         # Word lists (normal & censored)
 ├── frontend/              # Vue 3 frontend
 │   ├── src/
-│   │   ├── views/         # Page components
-│   │   ├── stores/        # Pinia stores
+│   │   ├── api/           # HTTP client
+│   │   ├── components/    # Vue components
+│   │   ├── composables/   # Vue composables
 │   │   ├── router/        # Vue Router config
+│   │   ├── stores/        # Pinia stores
+│   │   ├── styles/        # Global styles
+│   │   ├── types/         # TypeScript definitions
+│   │   ├── views/         # Page components
 │   │   ├── App.vue
-│   │   └── main.ts
+│   │   ├── main.ts
+│   │   └── style.css
 │   ├── bun.lock           # Bun lockfile (text format)
 │   ├── package.json
 │   └── vite.config.ts
+├── docs/                  # Documentation
 ├── Cargo.toml             # Workspace root
+├── flake.nix              # Nix development environment
+├── flake.lock
 └── README.md
 ```
 
