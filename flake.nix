@@ -17,6 +17,7 @@
             pkgs.bun
             pkgs.gleam
             pkgs.rebar3
+            pkgs.erlang
           ];
         };
       }

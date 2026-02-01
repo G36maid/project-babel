@@ -1,0 +1,42 @@
+{
+  "normal": [
+    "you",
+    "me",
+    "he",
+    "say",
+    "what",
+    "is",
+    "not",
+    "or",
+    "and",
+    "qmark",
+    "hello",
+    "belong",
+    "equal",
+    "gt",
+    "lt",
+    "person",
+    "god",
+    "unit",
+    "one",
+    "few",
+    "many",
+    "value",
+    "power",
+    "change",
+    "pray",
+    "have",
+    "want",
+    "obey",
+    "block"
+  ],
+  "censored": [
+    ["capital", "communism"],
+    ["material", "deity"],
+    ["democracy", "oligarchy", "dictatorship"],
+    ["tradition", "progress"],
+    ["local", "global"],
+    ["freedom", "limit"],
+    ["equality", "class"]
+  ]
+}

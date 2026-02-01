@@ -62,3 +62,5 @@ user_tokens.json
 
 backend/.claude/
 .claude/
+
+babel_backend/build/
