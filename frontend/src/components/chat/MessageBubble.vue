@@ -7,6 +7,7 @@ const props = defineProps<{
   message: CensoredMessage
   isOwn: boolean
   playerCountry?: string
+  playerName?: string
 }>()
 
 function formatTime(timestamp: number | undefined): string {
@@ -32,8 +33,9 @@ const tokens = computed(() => {
       ]"
     >
       <!-- Sender Info (only for others) -->
-      <div v-if="!isOwn && playerCountry" class="text-sm text-[var(--tg-accent)] font-medium mb-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
-        {{ playerCountry }}
+      <div v-if="!isOwn && (playerName || playerCountry)" class="text-sm text-[var(--tg-accent)] font-medium mb-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
+        <template v-if="playerName && playerCountry">{{ playerName }} ({{ playerCountry }})</template>
+        <template v-else>{{ playerName || playerCountry }}</template>
       </div>
       
       <!-- Message Content + Time Container -->

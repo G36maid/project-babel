@@ -56,6 +56,7 @@ watch(() => props.messages.length, async () => {
           <MessageBubble
             :message="item"
             :is-own="isOwnMessage(item)"
+            :player-name="item.sender_id"
             :player-country="getPlayerCountry(item.sender_id)"
             class="px-2 py-1"
           />
