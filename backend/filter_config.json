@@ -1,8 +1,8 @@
 {
   "banned_words": {
-    "A": ["freedom", "democracy", "protest"],
-    "B": ["monarchy", "tradition", "heritage"],
-    "C": ["capitalism", "profit", "market"]
+    "A": ["freedom", "democracy"],
+    "B": ["local", "progress"],
+    "C": ["capital", "equality"]
   },
   "replacement": "***"
 }
