@@ -46,7 +46,7 @@ function handleSend(content: string) {
 }
 
 function handleSymbolSelect(emoji: string) {
-  inputText.value += emoji
+  inputText.value += emoji + ' '
 }
 
 // Connect on mount
