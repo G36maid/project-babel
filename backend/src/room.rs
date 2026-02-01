@@ -7,6 +7,9 @@ use crate::data::*;
 use crate::filter::CensorshipFilter;
 use crate::words::{generate_allowed_and_banned_words, load_words};
 
+/// Game instructions message displayed when a room is created
+const GAME_INSTRUCTIONS: &str = "Welcome to Project Babel! You are trying to communicate across a censorship firewall. Each country has different words that are banned. Work together to discover which words are censored for each country using the allowed symbols. Good luck!";
+
 /// A chat room that manages participants, messages, and country-based censorship.
 ///
 /// `ChatRoom` is the core game entity that handles real-time communication between
@@ -76,7 +79,7 @@ impl ChatRoom {
             id: 1,
             sender_id: "SYSTEM".to_string(),
             sender_country: "".to_string(),
-            content: "Welcome to Project Babel! You are trying to communicate across a censorship firewall. Each country has different words that are banned. Work together to discover which words are censored for each country using the allowed symbols. Good luck!".to_string(),
+            content: GAME_INSTRUCTIONS.to_string(),
             timestamp: Self::current_timestamp(),
         };
         

@@ -10,7 +10,6 @@ const props = defineProps<{
   messages: CensoredMessage[]
   currentPlayerId: string
   participants: Participant[]
-  notifications?: string[]
 }>()
 
 const scroller = ref<any>(null)
