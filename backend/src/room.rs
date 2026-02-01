@@ -7,6 +7,9 @@ use crate::data::*;
 use crate::filter::CensorshipFilter;
 use crate::words::{generate_allowed_and_banned_words, load_words};
 
+/// Game instructions message displayed when a room is created
+const GAME_INSTRUCTIONS: &str = "Welcome to Project Babel! You are trying to communicate across a censorship firewall. Each country has different words that are banned. Work together to discover which words are censored for each country using the allowed symbols. Good luck!";
+
 /// A chat room that manages participants, messages, and country-based censorship.
 ///
 /// `ChatRoom` is the core game entity that handles real-time communication between
@@ -70,12 +73,22 @@ impl ChatRoom {
                 .insert(country.clone(), banned.clone());
         }
         let config_ref: &'static FilterConfig = Box::leak(Box::new(config_owned));
+        
+        // Create initial game instructions message
+        let game_instructions = Message {
+            id: 1,
+            sender_id: "SYSTEM".to_string(),
+            sender_country: "".to_string(),
+            content: GAME_INSTRUCTIONS.to_string(),
+            timestamp: Self::current_timestamp(),
+        };
+        
         Self {
             room_id,
             config: config_ref,
             participants: Vec::new(),
-            messages: Vec::new(),
-            message_counter: 0,
+            messages: vec![game_instructions],
+            message_counter: 1,
             filter: CensorshipFilter::new(config_ref),
             allowed_words,
             sender_censor: false,
@@ -244,6 +257,16 @@ impl ChatRoom {
             original_content = %message.content,
             "Processing message censorship"
         );
+
+        // System messages are never censored
+        if message.sender_id == "SYSTEM" {
+            return CensoredMessage {
+                id: message.id,
+                sender_id: message.sender_id.clone(),
+                content: message.content.clone(),
+                was_censored: false,
+            };
+        }
 
         let sender = if self.sender_censor && !self.allowed.contains(&message.sender_country) {
             trace!(

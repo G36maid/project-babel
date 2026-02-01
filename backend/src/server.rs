@@ -150,6 +150,16 @@ fn censor_message_for_country(
     receiver_censor: bool,
     shadow_ban: bool,
 ) -> CensoredMessage {
+    // System messages are never censored
+    if message.sender_id == "SYSTEM" {
+        return CensoredMessage {
+            id: message.id,
+            sender_id: message.sender_id.clone(),
+            content: message.content.clone(),
+            was_censored: false,
+        };
+    }
+    
     // Shadow ban: sender sees their own message uncensored
     if shadow_ban && &message.sender_country == viewer_country {
         return CensoredMessage {

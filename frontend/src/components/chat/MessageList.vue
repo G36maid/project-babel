@@ -18,6 +18,10 @@ function isOwnMessage(message: CensoredMessage): boolean {
   return message.sender_id === props.currentPlayerId
 }
 
+function isSystemMessage(message: CensoredMessage): boolean {
+  return message.sender_id === 'SYSTEM'
+}
+
 function getPlayerCountry(senderId: string): string {
   const participant = props.participants.find(p => p.user_id === senderId)
   return participant ? getCountryName(participant.country) : 'Unknown'
@@ -53,7 +57,15 @@ watch(() => props.messages.length, async () => {
           :data-index="index"
           :size-dependencies="[item.content]"
         >
+          <!-- System Message -->
+          <div v-if="isSystemMessage(item)" class="px-2 py-2 flex justify-center">
+            <div class="text-sm text-[var(--tg-text-secondary)] text-center max-w-md px-3 py-1.5 bg-[var(--tg-bg-secondary)] rounded-lg">
+              {{ item.content }}
+            </div>
+          </div>
+          <!-- Regular Message -->
           <MessageBubble
+            v-else
             :message="item"
             :is-own="isOwnMessage(item)"
             :player-name="item.sender_id"
