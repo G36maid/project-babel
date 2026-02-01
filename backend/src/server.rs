@@ -290,55 +290,24 @@ fn censor_message_for_country(
         };
     }
 
-    let mut content = message.content.clone();
-    let mut was_censored = false;
+    let sender_country_opt = if sender_censor {
+        Some(&message.sender_country)
+    } else {
+        None
+    };
 
-    // Apply sender's country filter (sender_censor mode)
-    #[allow(clippy::collapsible_if)]
-    if sender_censor {
-        if let Some(words) = banned_words.get(&message.sender_country) {
-            for word in words {
-                let lower_content = content.to_lowercase();
-                let lower_word = word.to_lowercase();
-                if lower_content.contains(&lower_word) {
-                    let mut result = String::new();
-                    let mut last_end = 0;
-                    for (start, _) in lower_content.match_indices(&lower_word) {
-                        result.push_str(&content[last_end..start]);
-                        result.push_str(CENSORSHIP_REPLACEMENT);
-                        last_end = start + word.len();
-                    }
-                    result.push_str(&content[last_end..]);
-                    content = result;
-                    was_censored = true;
-                }
-            }
-        }
-    }
+    let receiver_country_opt = if receiver_censor {
+        Some(viewer_country)
+    } else {
+        None
+    };
 
-    // Apply receiver's country filter (receiver_censor mode)
-    #[allow(clippy::collapsible_if)]
-    if receiver_censor {
-        if let Some(words) = banned_words.get(viewer_country) {
-            for word in words {
-                let lower_content = content.to_lowercase();
-                let lower_word = word.to_lowercase();
-                if lower_content.contains(&lower_word) {
-                    // Replace all occurrences (case-insensitive)
-                    let mut result = String::new();
-                    let mut last_end = 0;
-                    for (start, _) in lower_content.match_indices(&lower_word) {
-                        result.push_str(&content[last_end..start]);
-                        result.push_str(CENSORSHIP_REPLACEMENT);
-                        last_end = start + word.len();
-                    }
-                    result.push_str(&content[last_end..]);
-                    content = result;
-                    was_censored = true;
-                }
-            }
-        }
-    }
+    let (content, was_censored) = crate::filter::apply_censorship(
+        &message.content,
+        banned_words,
+        sender_country_opt,
+        receiver_country_opt,
+    );
 
     debug!(
         message_id = message.id,
@@ -619,7 +588,6 @@ async fn handle_participant_socket(
                             "Sending censored update to client"
                         );
 
-                        #[allow(clippy::collapsible_if)]
                         if let Ok(json) = to_string(&client_update) {
                             if ws_sender.send(WsMessage::Text(json.into())).await.is_err() {
                                 debug!(room_id, user_id, "Failed to send update, closing connection");
@@ -663,7 +631,6 @@ async fn handle_spectator_socket(socket: WebSocket, connector: RoomConnector, ro
     debug!(room_id, "Spectator WebSocket established");
 
     while let Some(update) = update_stream.next().await {
-        #[allow(clippy::collapsible_if)]
         if let Ok(json) = to_string(&update) {
             if ws_sender.send(WsMessage::Text(json.into())).await.is_err() {
                 debug!(room_id, "Spectator disconnected");
