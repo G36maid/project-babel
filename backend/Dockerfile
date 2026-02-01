@@ -17,7 +17,6 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /app/target/release/babel /app/babel
-COPY backend/filter_config.json ./
 COPY backend/words.json ./
 EXPOSE 3000
 CMD ["./babel"]

@@ -1,4 +1,4 @@
-use crate::data::{CountryCode, FilterConfig};
+use crate::data::{CountryCode, FilterConfig, CENSORSHIP_REPLACEMENT};
 
 pub struct CensorshipFilter {
     pub(crate) config: &'static FilterConfig,
@@ -55,7 +55,7 @@ impl CensorshipFilter {
 
         for (start, _) in lower_content.match_indices(&lower_word) {
             result.push_str(&content[last_end..start]);
-            result.push_str(&self.config.replacement);
+            result.push_str(CENSORSHIP_REPLACEMENT);
             last_end = start + word.len();
         }
         result.push_str(&content[last_end..]);
@@ -74,10 +74,7 @@ mod tests {
         banned_words.insert("A".to_string(), vec!["bad".to_string(), "evil".to_string()]);
         banned_words.insert("B".to_string(), vec!["wrong".to_string()]);
 
-        FilterConfig {
-            banned_words,
-            replacement: "***".to_string(),
-        }
+        FilterConfig { banned_words }
     }
 
     #[test]
