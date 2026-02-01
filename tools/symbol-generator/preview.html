@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Babel Symbols Preview</title>
+    <style>
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 { text-align: center; color: #9cdcfe; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .card {
+            background-color: #252526;
+            border: 1px solid #3c3c3c;
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: transform 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: #007acc;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+        .symbol-container {
+            width: 100px;
+            height: 100px;
+            background-color: #000;
+            border: 1px solid #555;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            color: white; 
+        }
+        svg {
+            width: 100%;
+            height: 100%;
+            stroke: currentColor;
+            stroke-width: 3;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            fill: none;
+        }
+        .label {
+            font-size: 14px;
+            font-weight: bold;
+            text-align: center;
+            color: #ce9178;
+            word-wrap: break-word;
+            width: 100%;
+        }
+        .meta {
+            margin-top: 20px;
+            text-align: center;
+            color: #6a9955;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Babel Symbols Preview</h1>
+    <div class="meta">Generated from dictionary.json</div>
+    <br>
+    <div class="grid">
+
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><path d="M 20 80 L 50 20 L 80 80 M 35 50 L 65 50" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </div>
+            <div class="label">and</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><line x1="20" y1="50" x2="70" y2="50" stroke="currentColor" stroke-width="3" stroke-linecap="round" /><path d="M 70 50 L 55 35 M 70 50 L 55 65" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </div>
+            <div class="label">belong</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><rect x="15" y="15" width="70" height="70" fill="none" stroke="currentColor" stroke-width="3" /><line x1="15" y1="15" x2="85" y2="85" stroke="currentColor" stroke-width="3" stroke-linecap="round" /><line x1="85" y1="15" x2="15" y2="85" stroke="currentColor" stroke-width="3" stroke-linecap="round" /></svg>
+            </div>
+            <div class="label">block</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><path d="M 20 80 L 80 80 L 50 35 Z" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><circle cx="50" cy="20" r="6" fill="currentColor" stroke="currentColor" stroke-width="3" /></svg>
+            </div>
+            <div class="label">capital</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><path d="M 50 20 L 80 80 L 20 80 Z" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </div>
+            <div class="label">change</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><path d="M 20 80 L 40 80 L 40 60 L 60 60 L 60 40 L 80 40 L 80 20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </div>
+            <div class="label">class</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><rect x="25" y="25" width="20" height="20" fill="currentColor" stroke="currentColor" stroke-width="3" /><rect x="55" y="25" width="20" height="20" fill="currentColor" stroke="currentColor" stroke-width="3" /><rect x="25" y="55" width="20" height="20" fill="currentColor" stroke="currentColor" stroke-width="3" /><rect x="55" y="55" width="20" height="20" fill="currentColor" stroke="currentColor" stroke-width="3" /></svg>
+            </div>
+            <div class="label">communism</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="10" fill="currentColor" stroke="currentColor" stroke-width="3" /><line x1="50" y1="30" x2="50" y2="10" stroke="currentColor" stroke-width="3" stroke-linecap="round" /><line x1="50" y1="70" x2="50" y2="90" stroke="currentColor" stroke-width="3" stroke-linecap="round" /><line x1="30" y1="50" x2="10" y2="50" stroke="currentColor" stroke-width="3" stroke-linecap="round" /><line x1="70" y1="50" x2="90" y2="50" stroke="currentColor" stroke-width="3" stroke-linecap="round" /><line x1="35" y1="35" x2="20" y2="20" stroke="currentColor" stroke-width="3" stroke-linecap="round" /><line x1="65" y1="65" x2="80" y2="80" stroke="currentColor" stroke-width="3" stroke-linecap="round" /><line x1="35" y1="65" x2="20" y2="80" stroke="currentColor" stroke-width="3" stroke-linecap="round" /><line x1="65" y1="35" x2="80" y2="20" stroke="currentColor" stroke-width="3" stroke-linecap="round" /></svg>
+            </div>
+            <div class="label">deity</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><path d="M 10 70 Q 50 10 90 70" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><circle cx="20" cy="80" r="5" fill="currentColor" stroke="currentColor" stroke-width="3" /><circle cx="40" cy="80" r="5" fill="currentColor" stroke="currentColor" stroke-width="3" /><circle cx="60" cy="80" r="5" fill="currentColor" stroke="currentColor" stroke-width="3" /><circle cx="80" cy="80" r="5" fill="currentColor" stroke="currentColor" stroke-width="3" /></svg>
+            </div>
+            <div class="label">democracy</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><path d="M 20 20 L 80 20 L 50 70 Z" fill="currentColor" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><line x1="20" y1="85" x2="80" y2="85" stroke="currentColor" stroke-width="5" stroke-linecap="round" /></svg>
+            </div>
+            <div class="label">dictatorship</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><line x1="20" y1="40" x2="80" y2="40" stroke="currentColor" stroke-width="3" stroke-linecap="round" /><line x1="20" y1="60" x2="80" y2="60" stroke="currentColor" stroke-width="3" stroke-linecap="round" /></svg>
+            </div>
+            <div class="label">equal</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><line x1="50" y1="80" x2="50" y2="30" stroke="currentColor" stroke-width="3" stroke-linecap="round" /><line x1="20" y1="30" x2="80" y2="30" stroke="currentColor" stroke-width="3" stroke-linecap="round" /><circle cx="20" cy="40" r="5" fill="currentColor" stroke="currentColor" stroke-width="3" /><circle cx="80" cy="40" r="5" fill="currentColor" stroke="currentColor" stroke-width="3" /></svg>
+            </div>
+            <div class="label">equality</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><circle cx="30" cy="50" r="8" fill="currentColor" stroke="currentColor" stroke-width="3" /><circle cx="70" cy="50" r="8" fill="currentColor" stroke="currentColor" stroke-width="3" /></svg>
+            </div>
+            <div class="label">few</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><path d="M 30 30 L 10 10" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><path d="M 70 30 L 90 10" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><path d="M 30 70 L 10 90" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><path d="M 70 70 L 90 90" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><circle cx="50" cy="50" r="15" fill="none" stroke="currentColor" stroke-width="3" /></svg>
+            </div>
+            <div class="label">freedom</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="35" fill="none" stroke="currentColor" stroke-width="3" /><path d="M 50 15 L 50 85 M 15 50 L 85 50" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="3" /></svg>
+            </div>
+            <div class="label">global</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><circle cx="50" cy="30" r="20" fill="none" stroke="currentColor" stroke-width="3" /><circle cx="50" cy="30" r="5" fill="currentColor" stroke="currentColor" stroke-width="3" /><path d="M 20 80 L 50 45 L 80 80" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </div>
+            <div class="label">god</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><path d="M 25 25 L 75 50 L 25 75" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </div>
+            <div class="label">gt</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><path d="M 25 40 L 25 70 Q 50 90 75 70 L 75 40" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </div>
+            <div class="label">have</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><line x1="50" y1="35" x2="50" y2="90" stroke="currentColor" stroke-width="3" stroke-linecap="round" /><circle cx="50" cy="20" r="8" fill="currentColor" stroke="currentColor" stroke-width="3" /><path d="M 80 20 L 70 10 M 80 20 L 90 10" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </div>
+            <div class="label">he</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><line x1="50" y1="35" x2="50" y2="90" stroke="currentColor" stroke-width="3" stroke-linecap="round" /><circle cx="50" cy="20" r="8" fill="currentColor" stroke="currentColor" stroke-width="3" /><path d="M 75 25 Q 90 25 90 45" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </div>
+            <div class="label">hello</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><line x1="20" y1="40" x2="80" y2="40" stroke="currentColor" stroke-width="3" stroke-linecap="round" /><line x1="20" y1="60" x2="80" y2="60" stroke="currentColor" stroke-width="3" stroke-linecap="round" /></svg>
+            </div>
+            <div class="label">is</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><line x1="30" y1="20" x2="30" y2="80" stroke="currentColor" stroke-width="5" stroke-linecap="round" /><line x1="70" y1="20" x2="70" y2="80" stroke="currentColor" stroke-width="5" stroke-linecap="round" /><circle cx="50" cy="50" r="8" fill="currentColor" stroke="currentColor" stroke-width="3" /></svg>
+            </div>
+            <div class="label">limit</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="35" fill="none" stroke="currentColor" stroke-width="3" /><circle cx="50" cy="50" r="10" fill="currentColor" stroke="currentColor" stroke-width="3" /></svg>
+            </div>
+            <div class="label">local</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><path d="M 75 25 L 25 50 L 75 75" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </div>
+            <div class="label">lt</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><circle cx="50" cy="25" r="8" fill="currentColor" stroke="currentColor" stroke-width="3" /><circle cx="25" cy="75" r="8" fill="currentColor" stroke="currentColor" stroke-width="3" /><circle cx="75" cy="75" r="8" fill="currentColor" stroke="currentColor" stroke-width="3" /></svg>
+            </div>
+            <div class="label">many</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><path d="M 50 20 L 80 35 L 80 75 L 50 90 L 20 75 L 20 35 Z" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><path d="M 50 50 L 50 90 M 50 50 L 20 35 M 50 50 L 80 35" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </div>
+            <div class="label">material</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><line x1="50" y1="35" x2="50" y2="90" stroke="currentColor" stroke-width="3" stroke-linecap="round" /><circle cx="50" cy="20" r="8" fill="currentColor" stroke="currentColor" stroke-width="3" /><path d="M 30 50 L 20 40 M 30 50 L 20 60" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </div>
+            <div class="label">me</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><line x1="80" y1="20" x2="20" y2="80" stroke="currentColor" stroke-width="4" stroke-linecap="round" /></svg>
+            </div>
+            <div class="label">not</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><path d="M 30 30 L 30 80 L 80 80" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </div>
+            <div class="label">obey</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><circle cx="50" cy="35" r="15" fill="none" stroke="currentColor" stroke-width="3" /><circle cx="35" cy="65" r="15" fill="none" stroke="currentColor" stroke-width="3" /><circle cx="65" cy="65" r="15" fill="none" stroke="currentColor" stroke-width="3" /></svg>
+            </div>
+            <div class="label">oligarchy</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="10" fill="currentColor" stroke="currentColor" stroke-width="3" /></svg>
+            </div>
+            <div class="label">one</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><path d="M 20 20 L 50 80 L 80 20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </div>
+            <div class="label">or</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><line x1="50" y1="35" x2="50" y2="90" stroke="currentColor" stroke-width="3" stroke-linecap="round" /><circle cx="50" cy="20" r="8" fill="currentColor" stroke="currentColor" stroke-width="3" /></svg>
+            </div>
+            <div class="label">person</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><path d="M 55 10 L 35 50 L 65 50 L 45 90" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </div>
+            <div class="label">power</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><line x1="50" y1="50" x2="50" y2="90" stroke="currentColor" stroke-width="3" stroke-linecap="round" /><path d="M 50 50 L 20 20 M 50 50 L 80 20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </div>
+            <div class="label">pray</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><path d="M 20 80 L 50 50 L 50 80 M 50 50 L 80 20 L 80 50" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><path d="M 80 20 L 80 20 M 80 20 L 80 20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </div>
+            <div class="label">progress</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><path d="M 35 30 C 35 10, 65 10, 65 40 C 65 60, 50 60, 50 75" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><circle cx="50" cy="88" r="5" fill="currentColor" stroke="currentColor" stroke-width="3" /></svg>
+            </div>
+            <div class="label">qmark</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><path d="M 30 50 Q 50 30 70 50 Q 50 70 30 50" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><line x1="40" y1="50" x2="60" y2="50" stroke="currentColor" stroke-width="3" stroke-linecap="round" /></svg>
+            </div>
+            <div class="label">say</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><rect x="15" y="15" width="70" height="70" fill="none" stroke="currentColor" stroke-width="3" /><rect x="35" y="35" width="30" height="30" fill="currentColor" stroke="currentColor" stroke-width="3" /></svg>
+            </div>
+            <div class="label">tradition</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><line x1="50" y1="15" x2="50" y2="85" stroke="currentColor" stroke-width="4" stroke-linecap="round" /></svg>
+            </div>
+            <div class="label">unit</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><rect x="25" y="25" width="50" height="50" fill="none" stroke="currentColor" stroke-width="3" /></svg>
+            </div>
+            <div class="label">value</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><path d="M 20 30 L 20 70 Q 50 95 80 70 L 80 30" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /><path d="M 30 50 L 70 50" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </div>
+            <div class="label">want</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><circle cx="40" cy="40" r="25" fill="none" stroke="currentColor" stroke-width="3" /><line x1="60" y1="60" x2="85" y2="85" stroke="currentColor" stroke-width="6" stroke-linecap="round" /></svg>
+            </div>
+            <div class="label">what</div>
+        </div>
+        
+        <div class="card">
+            <div class="symbol-container">
+                <svg viewBox="0 0 100 100"><line x1="50" y1="35" x2="50" y2="90" stroke="currentColor" stroke-width="3" stroke-linecap="round" /><circle cx="50" cy="20" r="8" fill="currentColor" stroke="currentColor" stroke-width="3" /><path d="M 70 50 L 60 40 M 70 50 L 60 60" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </div>
+            <div class="label">you</div>
+        </div>
+        
+    </div>
+</body>
+</html>

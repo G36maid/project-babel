@@ -20,9 +20,13 @@ onMounted(async () => {
   // Try to load SVG if symbol config exists
   if (symbolConfig.value && symbolConfig.value.svg) {
     try {
-      const svgPath = `/src/assets/${symbolConfig.value.svg}`
-      const svgModule = await import(/* @vite-ignore */ `${svgPath}?raw`)
-      svgContent.value = svgModule.default
+      // Fetch SVG from public folder (symbols.json paths already include "symbols/")
+      const svgPath = `/${symbolConfig.value.svg}`
+      const response = await fetch(svgPath)
+      if (!response.ok) {
+        throw new Error(`Failed to fetch SVG: ${response.status} ${response.statusText}`)
+      }
+      svgContent.value = await response.text()
     } catch (error) {
       console.error(`Failed to load SVG for "${props.word}":`, error)
       loadError.value = true
