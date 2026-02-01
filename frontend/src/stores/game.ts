@@ -163,6 +163,7 @@ export const useGameStore = defineStore('game', () => {
     ws = null
     connected.value = false
     connectionState.value = 'idle'
+    victoryState.value = null  // Clear victory state when leaving
   }
 
   function cleanup() {
@@ -177,6 +178,7 @@ export const useGameStore = defineStore('game', () => {
     notifications.value = []
     allowedWords.value = []
     bannedWords.value = {}
+    victoryState.value = null  // Clear victory state on cleanup
   }
 
   function setPlayerInfo(name: string, token: string) {
