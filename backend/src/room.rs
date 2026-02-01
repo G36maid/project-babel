@@ -1,9 +1,9 @@
+use std::collections::{HashMap, HashSet};
 use std::time::{SystemTime, UNIX_EPOCH};
-use std::collections::{HashSet, HashMap};
 
 use crate::data::*;
 use crate::filter::CensorshipFilter;
-use crate::words::{load_words, generate_allowed_and_banned_words};
+use crate::words::{generate_allowed_and_banned_words, load_words};
 
 pub struct ChatRoom {
     room_id: RoomId,
@@ -30,7 +30,9 @@ impl ChatRoom {
         // Clone and update the config's banned_words for this room
         let mut config_owned = config.clone();
         for (country, banned) in &banned_map {
-            config_owned.banned_words.insert(country.clone(), banned.clone());
+            config_owned
+                .banned_words
+                .insert(country.clone(), banned.clone());
         }
         let config_ref: &'static FilterConfig = Box::leak(Box::new(config_owned));
         Self {
@@ -111,11 +113,15 @@ impl ChatRoom {
                 // Send note: players share their hypotheses about banned words
                 // Store the latest notes for this user
                 self.player_notes.insert(user_id.clone(), note_map.clone());
-                
+
                 // This generates a notification for other participants
                 let country_count = note_map.len();
                 let total_words: usize = note_map.values().map(|v| v.len()).sum();
-                let country_label = if country_count == 1 { "country" } else { "countries" };
+                let country_label = if country_count == 1 {
+                    "country"
+                } else {
+                    "countries"
+                };
                 let word_label = if total_words == 1 { "word" } else { "words" };
                 notifications.push(Notification {
                     message: format!(
@@ -165,8 +171,16 @@ impl ChatRoom {
             .messages
             .iter()
             .map(|msg| {
-                let sender = if self.sender_censor && !self.allowed.contains(&msg.sender_country) { Some(&msg.sender_country) } else { None };
-                let receiver = if self.receiver_censor && !self.allowed.contains(country) { Some(country) } else { None };
+                let sender = if self.sender_censor && !self.allowed.contains(&msg.sender_country) {
+                    Some(&msg.sender_country)
+                } else {
+                    None
+                };
+                let receiver = if self.receiver_censor && !self.allowed.contains(country) {
+                    Some(country)
+                } else {
+                    None
+                };
                 // shadow_ban: if sender==receiver, skip censorship
                 let (content, was_censored) = if self.shadow_ban && &msg.sender_country == country {
                     (msg.content.clone(), false)
@@ -191,12 +205,21 @@ impl ChatRoom {
 
     /// Censor a single message for a specific country
     pub fn censor_message_for(&self, message: &Message, country: &CountryCode) -> CensoredMessage {
-        let sender = if self.sender_censor && !self.allowed.contains(&message.sender_country) { Some(&message   .sender_country) } else { None };
-        let receiver = if self.receiver_censor && !self.allowed.contains(country) { Some(country) } else { None };
+        let sender = if self.sender_censor && !self.allowed.contains(&message.sender_country) {
+            Some(&message.sender_country)
+        } else {
+            None
+        };
+        let receiver = if self.receiver_censor && !self.allowed.contains(country) {
+            Some(country)
+        } else {
+            None
+        };
         let (content, was_censored) = if self.shadow_ban && &message.sender_country == country {
             (message.content.clone(), false)
         } else {
-            self.filter.censor_message(&message.content, sender, receiver)
+            self.filter
+                .censor_message(&message.content, sender, receiver)
         };
         CensoredMessage {
             id: message.id,
@@ -246,14 +269,17 @@ mod tests {
     fn test_send_note_generates_notification() {
         let config = make_test_config();
         let mut room = ChatRoom::new("test_room".to_string(), config);
-        
+
         let user_id = "alice".to_string();
         let country = "A".to_string();
         room.add_participant(user_id.clone(), country.clone());
 
         // Create a note with suspected banned words
         let mut note_map = HashMap::new();
-        note_map.insert("A".to_string(), vec!["freedom".to_string(), "democracy".to_string()]);
+        note_map.insert(
+            "A".to_string(),
+            vec!["freedom".to_string(), "democracy".to_string()],
+        );
         note_map.insert("B".to_string(), vec!["monarchy".to_string()]);
 
         let action = UserAction::SendNote(note_map.clone());
@@ -261,7 +287,7 @@ mod tests {
 
         // Should not create a message
         assert!(message.is_none());
-        
+
         // Should generate a notification
         assert_eq!(notifications.len(), 1);
         assert!(notifications[0].message.contains("alice"));
@@ -279,7 +305,7 @@ mod tests {
     fn test_send_note_empty_map() {
         let config = make_test_config();
         let mut room = ChatRoom::new("test_room".to_string(), config);
-        
+
         let user_id = "bob".to_string();
         let country = "B".to_string();
         room.add_participant(user_id.clone(), country.clone());
@@ -291,7 +317,7 @@ mod tests {
 
         // Should not create a message
         assert!(message.is_none());
-        
+
         // Should still generate a notification with 0 countries and 0 words
         assert_eq!(notifications.len(), 1);
         assert!(notifications[0].message.contains("bob"));
@@ -303,14 +329,21 @@ mod tests {
     fn test_send_note_single_country() {
         let config = make_test_config();
         let mut room = ChatRoom::new("test_room".to_string(), config);
-        
+
         let user_id = "charlie".to_string();
         let country = "C".to_string();
         room.add_participant(user_id.clone(), country.clone());
 
         // Send note for single country
         let mut note_map = HashMap::new();
-        note_map.insert("D".to_string(), vec!["word1".to_string(), "word2".to_string(), "word3".to_string()]);
+        note_map.insert(
+            "D".to_string(),
+            vec![
+                "word1".to_string(),
+                "word2".to_string(),
+                "word3".to_string(),
+            ],
+        );
 
         let action = UserAction::SendNote(note_map);
         let (message, notifications) = room.process_action(&user_id, &country, action);
@@ -326,7 +359,7 @@ mod tests {
     fn test_send_note_single_word() {
         let config = make_test_config();
         let mut room = ChatRoom::new("test_room".to_string(), config);
-        
+
         let user_id = "diana".to_string();
         let country = "D".to_string();
         room.add_participant(user_id.clone(), country.clone());
@@ -349,7 +382,7 @@ mod tests {
     fn test_send_note_updates_latest() {
         let config = make_test_config();
         let mut room = ChatRoom::new("test_room".to_string(), config);
-        
+
         let user_id = "alice".to_string();
         let country = "A".to_string();
         room.add_participant(user_id.clone(), country.clone());
@@ -365,7 +398,10 @@ mod tests {
 
         // Send second note (should replace first)
         let mut note_map2 = HashMap::new();
-        note_map2.insert("B".to_string(), vec!["monarchy".to_string(), "tradition".to_string()]);
+        note_map2.insert(
+            "B".to_string(),
+            vec!["monarchy".to_string(), "tradition".to_string()],
+        );
         let action2 = UserAction::SendNote(note_map2.clone());
         room.process_action(&user_id, &country, action2);
 
@@ -373,7 +409,7 @@ mod tests {
         let stored_note = room.get_player_note(&user_id).unwrap();
         assert_eq!(stored_note, &note_map2);
         assert_ne!(stored_note, &note_map1);
-        
+
         // Verify we only have one entry per user
         assert_eq!(room.get_player_notes().len(), 1);
     }

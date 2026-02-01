@@ -44,8 +44,6 @@ async fn main() {
 
     info!("Initializing server");
 
-
-
     let room_manager = RoomManager::from_config(DefaultRoomConfig);
 
     let state = AppState {
