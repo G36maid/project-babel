@@ -15,6 +15,8 @@
         devShells.default = pkgs.mkShell {
           buildInputs = [
             pkgs.bun
+            pkgs.gleam
+            pkgs.rebar3
           ];
         };
       }
