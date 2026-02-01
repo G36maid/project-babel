@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { CensoredMessage } from '@/types/websocket'
+import SymbolRenderer from '@/components/symbols/SymbolRenderer.vue'
 
 const props = defineProps<{
   message: CensoredMessage
@@ -12,6 +14,11 @@ function formatTime(timestamp: number | undefined): string {
   const date = new Date(timestamp * 1000)
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
+
+// Parse message content into word tokens
+const tokens = computed(() => {
+  return props.message.content.split(' ')
+})
 </script>
 
 <template>
@@ -32,7 +39,12 @@ function formatTime(timestamp: number | undefined): string {
       <!-- Message Content + Time Container -->
       <!-- Use inline-block logic or flex to wrap time naturally -->
       <div class="relative pr-9 pb-1">
-        <span class="break-words whitespace-pre-wrap">{{ message.content }}</span>
+        <span class="break-words whitespace-normal">
+          <template v-for="(token, index) in tokens" :key="index">
+            <SymbolRenderer :word="token" :size="20" />
+            <span v-if="index < tokens.length - 1"> </span>
+          </template>
+        </span>
         
         <!-- Censored Indicator -->
         <span v-if="message.was_censored" class="text-[var(--tg-destructive)] text-xs ml-1 italic">
