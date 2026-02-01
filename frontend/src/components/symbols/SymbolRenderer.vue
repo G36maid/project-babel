@@ -1,49 +1,54 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useSymbols } from '@/composables/useSymbols'
+import { computed, onMounted, ref } from "vue";
+import { useSymbols } from "@/composables/useSymbols";
 
-const props = withDefaults(defineProps<{
-  word: string
-  size?: number
-}>(), {
-  size: 24
-})
+const props = withDefaults(
+  defineProps<{
+    word: string;
+    size?: number;
+  }>(),
+  {
+    size: 24,
+  },
+);
 
-const svgContent = ref<string | null>(null)
-const loadError = ref(false)
+const svgContent = ref<string | null>(null);
+const loadError = ref(false);
 
 const symbolConfig = computed(() => {
-  return useSymbols().getSymbol(props.word)
-})
+  return useSymbols().getSymbol(props.word);
+});
 
 onMounted(async () => {
   // Try to load SVG if symbol config exists
   if (symbolConfig.value && symbolConfig.value.svg) {
     try {
       // Fetch SVG from public folder (symbols.json paths already include "symbols/")
-      const svgPath = `/${symbolConfig.value.svg}`
-      const response = await fetch(svgPath)
+      const svgPath = `/${symbolConfig.value.svg}`;
+      const response = await fetch(svgPath);
       if (!response.ok) {
-        throw new Error(`Failed to fetch SVG: ${response.status} ${response.statusText}`)
+        throw new Error(
+          `Failed to fetch SVG: ${response.status} ${response.statusText}`,
+        );
       }
-      svgContent.value = await response.text()
+      svgContent.value = await response.text();
     } catch (error) {
-      console.error(`Failed to load SVG for "${props.word}":`, error)
-      loadError.value = true
+      console.error(`Failed to load SVG for "${props.word}":`, error);
+      loadError.value = true;
     }
   }
-})
+});
 
 const renderMode = computed(() => {
   // Fallback chain: SVG → emoji → text
   if (symbolConfig.value && svgContent.value && !loadError.value) {
-    return 'svg'
+    return "svg";
   }
   if (symbolConfig.value && symbolConfig.value.emoji) {
-    return 'emoji'
+    return "emoji";
   }
-  return 'text'
-})
+  return "text";
+});
 </script>
 
 <template>

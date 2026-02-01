@@ -1,70 +1,70 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { useSymbols } from '@/composables/useSymbols'
-import { useGameStore } from '@/stores/game'
-import SymbolRenderer from './SymbolRenderer.vue'
+import { computed, ref } from "vue";
+import { useSymbols } from "@/composables/useSymbols";
+import { useGameStore } from "@/stores/game";
+import SymbolRenderer from "./SymbolRenderer.vue";
 
 const props = defineProps<{
-  visible: boolean
-}>()
+  visible: boolean;
+}>();
 
 const emit = defineEmits<{
-  'select': [word: string]
-  'close': []
-}>()
+  select: [word: string];
+  close: [];
+}>();
 
-const { getAllSymbols } = useSymbols()
-const gameStore = useGameStore()
+const { getAllSymbols } = useSymbols();
+const gameStore = useGameStore();
 
-const hoveredWord = ref<string | null>(null)
-const keyboardHeight = ref(192) // Default 192px (12rem / max-h-48)
-const isDragging = ref(false)
-const startY = ref(0)
-const startHeight = ref(0)
+const hoveredWord = ref<string | null>(null);
+const keyboardHeight = ref(192); // Default 192px (12rem / max-h-48)
+const isDragging = ref(false);
+const startY = ref(0);
+const startHeight = ref(0);
 
 // Get all available symbols from composable, filtered by allowed words
 const allSymbols = computed(() => {
-  const symbolsRecord = getAllSymbols()
-  const allSymbolWords = Object.keys(symbolsRecord)
-  
+  const symbolsRecord = getAllSymbols();
+  const allSymbolWords = Object.keys(symbolsRecord);
+
   // If no allowed words are set yet, show all symbols (fallback behavior)
   if (gameStore.allowedWords.length === 0) {
-    return allSymbolWords
+    return allSymbolWords;
   }
-  
+
   // Filter symbols to only show allowed words
-  return allSymbolWords.filter(word => gameStore.allowedWords.includes(word))
-})
+  return allSymbolWords.filter((word) => gameStore.allowedWords.includes(word));
+});
 
 function onSymbolClick(word: string) {
-  emit('select', word)
+  emit("select", word);
 }
 
 function onClose() {
-  emit('close')
+  emit("close");
 }
 
 function startDrag(event: MouseEvent) {
-  isDragging.value = true
-  startY.value = event.clientY
-  startHeight.value = keyboardHeight.value
-  document.addEventListener('mousemove', onDrag)
-  document.addEventListener('mouseup', stopDrag)
-  event.preventDefault()
+  isDragging.value = true;
+  startY.value = event.clientY;
+  startHeight.value = keyboardHeight.value;
+  document.addEventListener("mousemove", onDrag);
+  document.addEventListener("mouseup", stopDrag);
+  event.preventDefault();
 }
 
 function onDrag(event: MouseEvent) {
-  if (!isDragging.value) return
-  
-  const deltaY = startY.value - event.clientY
-  const newHeight = Math.max(100, Math.min(600, startHeight.value + deltaY))
-  keyboardHeight.value = newHeight
+  if (!isDragging.value) return;
+
+  const deltaY = startY.value - event.clientY;
+  const newHeight = Math.max(100, Math.min(600, startHeight.value + deltaY));
+  keyboardHeight.value = newHeight;
 }
 
 function stopDrag() {
-  isDragging.value = false
-  document.removeEventListener('mousemove', onDrag)
-  document.removeEventListener('mouseup', stopDrag)
+  isDragging.value = false;
+  document.removeEventListener("mousemove", onDrag);
+  document.removeEventListener("mouseup", stopDrag);
 }
 </script>
 

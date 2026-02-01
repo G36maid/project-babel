@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import type { Participant } from '@/types/websocket'
-import { getCountryName } from '@/types/websocket'
+import type { Participant } from "@/types/websocket";
+import { getCountryName } from "@/types/websocket";
 
 const props = defineProps<{
-  roomName?: string
-  participants: Participant[]
-}>()
+  roomName?: string;
+  participants: Participant[];
+}>();
 </script>
 
 <template>
