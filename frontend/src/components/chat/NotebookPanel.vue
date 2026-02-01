@@ -169,7 +169,7 @@ function clearNotes() {
 </script>
 
 <template>
-  <div class="notebook-panel bg-[var(--tg-bg-secondary)] rounded-lg p-4 shadow-lg">
+  <div class="notebook-panel bg-[var(--tg-bg-secondary)] rounded-lg p-4 shadow-md border border-[var(--tg-bg-chat)]">
     <div class="mb-4">
       <h3 class="text-lg font-bold text-theme-accent">📝 Banned Words Notebook</h3>
     </div>

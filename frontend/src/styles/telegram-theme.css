@@ -24,7 +24,7 @@
   /* Light Mode */
   --tg-bg: #ffffff;
   --tg-bg-secondary: #f4f4f5; /* Slightly darker than pure white for sidebar */
-  --tg-bg-chat: #8fbc8f; /* Placeholder pattern bg usually */
+  --tg-bg-chat: #8fbc8f; /* Telegram green pattern bg */
   
   --tg-message-out: #effdd6; /* Whatsapp/Telegram green-ish */
   --tg-message-in: #ffffff;
