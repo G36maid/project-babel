@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useGameStore } from '@/stores/game'
-import { COUNTRY_NAMES } from '@/types/websocket'
+import { COUNTRIES } from '@/types/websocket'
 
 const router = useRouter()
 const route = useRoute()
@@ -20,10 +20,7 @@ onMounted(() => {
   }
 })
 
-const countries = Object.entries(COUNTRY_NAMES).map(([code, name]) => ({
-  value: code,
-  label: name
-}))
+const countries = COUNTRIES
 
 async function joinGame() {
   if (!playerName.value.trim()) {

@@ -13,6 +13,11 @@ export const COUNTRY_NAMES: Record<string, string> = {
   'D': 'Kaelis'
 }
 
+export const COUNTRIES = Object.entries(COUNTRY_NAMES).map(([code, name]) => ({
+  value: code as CountryCode,
+  label: name
+}))
+
 export function getCountryName(code: string): string {
   return COUNTRY_NAMES[code] || code
 }
