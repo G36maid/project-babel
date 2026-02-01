@@ -1,6 +1,6 @@
+use futures::SinkExt;
 use futures::StreamExt;
 use serde::Serialize;
-use futures::SinkExt;
 #[derive(Serialize)]
 struct RoomWordsInfo {
     allowed_words: Vec<String>,
@@ -12,11 +12,16 @@ async fn get_room_words_info(
     State(state): State<AppState>,
     Path(room_id): Path<RoomId>,
 ) -> Result<Json<RoomWordsInfo>, StatusCode> {
-    let connector = state.room_manager.connect_to_room(&room_id)
+    let connector = state
+        .room_manager
+        .connect_to_room(&room_id)
         .ok_or(StatusCode::NOT_FOUND)?;
     let allowed_words = (*connector.allowed_words).clone();
     let banned_words = (*connector.banned_words).clone();
-    Ok(Json(RoomWordsInfo { allowed_words, banned_words }))
+    Ok(Json(RoomWordsInfo {
+        allowed_words,
+        banned_words,
+    }))
 }
 use axum::{
     Json as AxumJson, Router,
@@ -26,10 +31,10 @@ use axum::{
     },
     http::{HeaderMap, StatusCode},
     response::{Json, Response},
-    routing::{get, post}
+    routing::{get, post},
 };
-use rand::distr::{Alphanumeric, SampleString};
 use dashmap::DashMap;
+use rand::distr::{Alphanumeric, SampleString};
 use serde::Deserialize;
 use serde_json::{from_str, to_string};
 use std::sync::Arc;
@@ -132,10 +137,14 @@ async fn connect_room(
     ws: WebSocketUpgrade,
 ) -> Result<Response, StatusCode> {
     // Extract user from query parameter token
-    let (user_id, country) = state.tokens_map.get(&query.token).map(|pair| pair.value().clone()).ok_or_else(|| {
-        warn!(room_id, token = %query.token, "Unauthorized connection attempt");
-        StatusCode::FORBIDDEN
-    })?;
+    let (user_id, country) = state
+        .tokens_map
+        .get(&query.token)
+        .map(|pair| pair.value().clone())
+        .ok_or_else(|| {
+            warn!(room_id, token = %query.token, "Unauthorized connection attempt");
+            StatusCode::FORBIDDEN
+        })?;
 
     let user = AuthenticatedUser {
         user_id: user_id.clone(),

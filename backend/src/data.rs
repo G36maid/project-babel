@@ -11,6 +11,9 @@ pub type Timestamp = u64;
 
 pub const MAX_USER_ACTIONS: usize = 100;
 
+/// The replacement string used when censoring banned words.
+pub const CENSORSHIP_REPLACEMENT: &str = "***";
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Message {
     pub id: MessageId,
@@ -33,6 +36,7 @@ pub struct CensoredMessage {
 pub enum UserAction {
     SendMessage(String),
     SendMessageArray(Vec<String>),
+    SendNote(HashMap<CountryCode, Vec<String>>),
     LeaveRoom,
 }
 
@@ -63,19 +67,9 @@ pub struct RoomUpdate {
     pub room_closed: bool,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct FilterConfig {
     pub banned_words: HashMap<CountryCode, Vec<String>>,
-    pub replacement: String,
-}
-
-impl Default for FilterConfig {
-    fn default() -> Self {
-        Self {
-            banned_words: HashMap::new(),
-            replacement: "***".to_string(),
-        }
-    }
 }
 
 pub trait RoomConfig: Send + Sync {
