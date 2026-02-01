@@ -1,5 +1,6 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
+import '@erfanmola/televue/style.css'
 import './style.css'
 import './styles/telegram-theme.css'
 import App from './App.vue'
