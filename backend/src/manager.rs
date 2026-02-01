@@ -43,7 +43,11 @@ impl RoomRunner {
         for user_message in user_messages {
             let mut room = self.room.lock().unwrap();
             // Handle join if user not in room
-            if !room.participants().iter().any(|p| p.user_id == user_message.user_id) {
+            if !room
+                .participants()
+                .iter()
+                .any(|p| p.user_id == user_message.user_id)
+            {
                 room.add_participant(user_message.user_id.clone(), user_message.country.clone());
                 notifications.push(Notification {
                     message: format!("{} joined the room", user_message.user_id),
@@ -83,8 +87,7 @@ impl RoomRunner {
         // Create update for each connected participant's country
         let room_state = {
             let room = self.room.lock().unwrap();
-            let state = room.get_censored_state_for(&"".to_string());
-            state
+            room.get_censored_state_for(&"".to_string())
         };
 
         let update = RoomUpdate {
@@ -160,7 +163,9 @@ impl RoomManager {
             room_state: room.lock().unwrap().get_censored_state_for(&"".to_string()),
             new_messages: vec![],
             notifications: vec![],
-            room_closed: false,            victory: None,        });
+            room_closed: false,
+            victory: None,
+        });
 
         eprintln!("Created room {}", &room_id);
 

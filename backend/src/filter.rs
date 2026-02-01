@@ -1,4 +1,4 @@
-use crate::data::{CountryCode, FilterConfig, CENSORSHIP_REPLACEMENT};
+use crate::data::{CENSORSHIP_REPLACEMENT, CountryCode, FilterConfig};
 
 pub struct CensorshipFilter {
     pub(crate) config: &'static FilterConfig,
@@ -20,25 +20,21 @@ impl CensorshipFilter {
         let mut was_censored = false;
 
         // Apply sender's country filter if enabled
-        if let Some(sender) = sender_country {
-            if let Some(banned_words) = self.config.banned_words.get(sender) {
-                for word in banned_words {
-                    if result.to_lowercase().contains(&word.to_lowercase()) {
-                        result = self.replace_word(&result, word);
-                        was_censored = true;
-                    }
+        if let (Some(_sender), Some(banned_words)) = (sender_country, self.config.banned_words.get(sender_country.unwrap_or(&"".to_string()))) {
+            for word in banned_words {
+                if result.to_lowercase().contains(&word.to_lowercase()) {
+                    result = self.replace_word(&result, word);
+                    was_censored = true;
                 }
             }
         }
 
         // Apply receiver's country filter if enabled
-        if let Some(receiver) = receiver_country {
-            if let Some(banned_words) = self.config.banned_words.get(receiver) {
-                for word in banned_words {
-                    if result.to_lowercase().contains(&word.to_lowercase()) {
-                        result = self.replace_word(&result, word);
-                        was_censored = true;
-                    }
+        if let (Some(_receiver), Some(banned_words)) = (receiver_country, self.config.banned_words.get(receiver_country.unwrap_or(&"".to_string()))) {
+            for word in banned_words {
+                if result.to_lowercase().contains(&word.to_lowercase()) {
+                    result = self.replace_word(&result, word);
+                    was_censored = true;
                 }
             }
         }
