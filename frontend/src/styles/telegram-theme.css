@@ -47,6 +47,34 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
+.text-theme-accent {
+  color: var(--tg-accent);
+}
+
+.text-theme-secondary {
+  color: var(--tg-text-secondary);
+}
+
+.text-theme-primary {
+  color: var(--tg-text);
+}
+
+.bg-theme-accent {
+  background-color: var(--tg-accent);
+}
+
+.border-theme-accent {
+  border-color: var(--tg-accent);
+}
+
+.placeholder-theme-secondary::placeholder {
+  color: var(--tg-text-secondary);
+}
+
+.hover\:opacity-80:hover {
+  opacity: 0.8;
+}
+
 /* Message Bubble Tail Classes */
 .message-tail {
   position: relative;
