@@ -20,7 +20,7 @@ function formatTime(timestamp: number | undefined): string {
       :class="[
         'message-tail relative max-w-[420px] rounded-2xl px-3 py-1.5 shadow-sm text-base leading-snug min-w-[120px]',
         isOwn 
-          ? 'outgoing bg-[var(--tg-message-out)] text-[var(--tg-message-text,white)] rounded-br-none' 
+          ? 'outgoing bg-[var(--tg-message-out)] text-[var(--tg-message-text-out)] rounded-br-none' 
           : 'incoming bg-[var(--tg-message-in)] text-[var(--tg-text)] rounded-bl-none'
       ]"
     >

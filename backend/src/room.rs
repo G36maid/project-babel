@@ -60,7 +60,7 @@ impl ChatRoom {
     pub fn new(room_id: RoomId, config: &'static FilterConfig) -> Self {
         // Load words from words.json
         let words = load_words("words.json");
-        let country_codes = ["TW", "CN", "US", "RU"];
+        let country_codes = ["A", "B", "C", "D"];
         let (allowed_words, banned_map) = generate_allowed_and_banned_words(&words, &country_codes);
         // Clone and update the config's banned_words for this room
         let mut config_owned = config.clone();

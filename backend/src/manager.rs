@@ -70,19 +70,15 @@ impl RoomRunner {
         }
 
         // Create update for each connected participant's country
-        let (room_state, censored_new_messages) = {
+        let room_state = {
             let room = self.room.lock().unwrap();
             let state = room.get_censored_state_for(&"".to_string());
-            let censored: Vec<CensoredMessage> = new_messages
-                .iter()
-                .map(|msg| room.censor_message_for(msg, &"".to_string()))
-                .collect();
-            (state, censored)
+            state
         };
 
         let update = RoomUpdate {
             room_state,
-            new_messages: censored_new_messages,
+            new_messages,
             notifications,
             room_closed,
         };

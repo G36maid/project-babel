@@ -62,7 +62,8 @@ pub struct Notification {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RoomUpdate {
     pub room_state: RoomState,
-    pub new_messages: Vec<CensoredMessage>,
+    /// Raw messages that need to be censored per-user before sending to clients.
+    pub new_messages: Vec<Message>,
     pub notifications: Vec<Notification>,
     pub room_closed: bool,
 }
