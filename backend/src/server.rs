@@ -1,3 +1,58 @@
+use std::collections::HashMap;
+#[derive(Deserialize)]
+
+#[derive(Serialize)]
+struct SolveResponse {
+    solved: bool,
+}
+// POST /api/rooms/{id}/solve - Check if submitted banned words match exactly
+#[derive(Deserialize)]
+struct SolveRequest {
+    answer: HashMap<String, Vec<String>>,
+}
+
+// POST /api/rooms/{id}/solve - Check if submitted banned words match exactly, and send system message if correct
+async fn solve_room(
+    State(state): State<AppState>,
+    Path(room_id): Path<RoomId>,
+    headers: HeaderMap, // 新增
+    AxumJson(payload): AxumJson<SolveRequest>,
+) -> Result<Json<SolveResponse>, StatusCode> {
+    let user = extract_user_from_headers(&headers, &state.tokens_map)
+        .ok_or(StatusCode::FORBIDDEN)?;
+    let connector = state.room_manager.connect_to_room(&room_id)
+        .ok_or(StatusCode::NOT_FOUND)?;
+    let mut room = connector.room.lock().unwrap();
+    let banned_words = &room.filter.config.banned_words;
+    // Check if country sets match
+    if payload.answer.len() != banned_words.len() {
+        return Ok(Json(SolveResponse { solved: false }));
+    }
+    for (country, submitted) in &payload.answer {
+        match banned_words.get(country) {
+            Some(expected) => {
+                let s1: std::collections::HashSet<_> = submitted.iter().collect();
+                let s2: std::collections::HashSet<_> = expected.iter().collect();
+                if s1 != s2 {
+                    return Ok(Json(SolveResponse { solved: false }));
+                }
+            }
+            None => return Ok(Json(SolveResponse { solved: false })),
+        }
+    }
+    // If correct, send system message
+    let msg = format!("[SYSTEM] {} solved the censorship puzzle!", user.user_id);
+    room.message_counter += 1;
+    let counter = room.message_counter;
+    room.messages.push(crate::data::Message {
+        id: counter,
+        sender_id: "SYSTEM".to_string(),
+        sender_country: "".to_string(),
+        content: msg,
+        timestamp: crate::room::ChatRoom::current_timestamp(),
+    });
+    Ok(Json(SolveResponse { solved: true }))
+}
 use futures::SinkExt;
 use futures::StreamExt;
 use serde::Serialize;
@@ -16,8 +71,9 @@ async fn get_room_words_info(
         .room_manager
         .connect_to_room(&room_id)
         .ok_or(StatusCode::NOT_FOUND)?;
-    let allowed_words = (*connector.allowed_words).clone();
-    let banned_words = (*connector.banned_words).clone();
+    let room = connector.room.lock().unwrap();
+    let allowed_words = room.allowed_words.clone();
+    let banned_words = room.filter.config.banned_words.clone();
     Ok(Json(RoomWordsInfo {
         allowed_words,
         banned_words,
@@ -45,7 +101,6 @@ use tracing::{debug, info, warn};
 
 use crate::data::*;
 use crate::manager::{RoomConnector, RoomManager};
-use std::collections::HashMap;
 
 /// Update sent to clients with messages censored for their specific country.
 #[derive(Clone, Debug, Serialize)]
@@ -270,11 +325,7 @@ async fn handle_participant_socket(
     let RoomConnector {
         action_sender,
         mut update_receiver,
-        allowed_words: _,
-        banned_words,
-        sender_censor,
-        receiver_censor,
-        shadow_ban,
+        room,
     } = connector;
 
     let user_id = &user.user_id;
@@ -330,6 +381,17 @@ async fn handle_participant_socket(
                 match result {
                     Ok(_) => {
                         let update = update_receiver.borrow().clone();
+
+                        // Lock the room only to extract the needed fields, then drop the lock before await
+                        let (banned_words, sender_censor, receiver_censor, shadow_ban) = {
+                            let locked_room = room.lock().unwrap();
+                            (
+                                locked_room.filter.config.banned_words.clone(),
+                                locked_room.sender_censor,
+                                locked_room.receiver_censor,
+                                locked_room.shadow_ban,
+                            )
+                        };
 
                         // Censor messages for this user's country
                         let censored_messages: Vec<CensoredMessage> = update
@@ -429,6 +491,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/rooms/{id}/connect", get(connect_room))
         .route("/api/rooms/{id}/spectate", get(spectate_room))
         .route("/api/rooms/{id}/info", get(get_room_words_info))
+        .route("/api/rooms/{id}/solve", post(solve_room))
         .route("/api/login", post(login))
         .layer(TraceLayer::new_for_http())
         .layer(cors)

@@ -1,13 +1,13 @@
 use dashmap::DashMap;
 use rand::distr::{Alphanumeric, SampleString};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tokio::sync::{mpsc, watch};
 
 use crate::data::*;
 use crate::room::ChatRoom;
 
 pub struct RoomRunner {
-    room: ChatRoom,
+    room: Arc<Mutex<ChatRoom>>,
     action_receiver: mpsc::Receiver<UserMessage>,
     update_sender: watch::Sender<RoomUpdate>,
     room_manager: Arc<RoomManager>,
@@ -17,11 +17,7 @@ pub struct RoomRunner {
 pub struct RoomConnector {
     pub action_sender: mpsc::Sender<UserMessage>,
     pub update_receiver: watch::Receiver<RoomUpdate>,
-    pub allowed_words: Arc<Vec<String>>,
-    pub banned_words: Arc<std::collections::HashMap<String, Vec<String>>>,
-    pub sender_censor: bool,
-    pub receiver_censor: bool,
-    pub shadow_ban: bool,
+    pub room: Arc<Mutex<ChatRoom>>,
 }
 
 pub struct RoomManager {
@@ -44,21 +40,16 @@ impl RoomRunner {
         let mut room_closed = false;
 
         for user_message in user_messages {
+            let mut room = self.room.lock().unwrap();
             // Handle join if user not in room
-            if !self
-                .room
-                .participants()
-                .iter()
-                .any(|p| p.user_id == user_message.user_id)
-            {
-                self.room
-                    .add_participant(user_message.user_id.clone(), user_message.country.clone());
+            if !room.participants().iter().any(|p| p.user_id == user_message.user_id) {
+                room.add_participant(user_message.user_id.clone(), user_message.country.clone());
                 notifications.push(Notification {
                     message: format!("{} joined the room", user_message.user_id),
                 });
             }
 
-            let (message, action_notifications) = self.room.process_action(
+            let (message, action_notifications) = room.process_action(
                 &user_message.user_id,
                 &user_message.country,
                 user_message.action,
@@ -71,13 +62,19 @@ impl RoomRunner {
         }
 
         // Check if room should close
-        if self.room.is_empty() && !new_messages.is_empty() {
-            room_closed = true;
+        {
+            let room = self.room.lock().unwrap();
+            if room.is_empty() && !new_messages.is_empty() {
+                room_closed = true;
+            }
         }
 
-        // Broadcast raw room state and messages - censorship is applied per-user
-        // in the WebSocket handler based on each user's country
-        let room_state = self.room.get_censored_state_for(&"".to_string());
+        // Create update for each connected participant's country
+        let room_state = {
+            let room = self.room.lock().unwrap();
+            let state = room.get_censored_state_for(&"".to_string());
+            state
+        };
 
         let update = RoomUpdate {
             room_state,
@@ -91,7 +88,7 @@ impl RoomRunner {
     }
 
     fn run_in_background(mut self) {
-        let room_id = self.room.room_id().clone();
+        let room_id = self.room.lock().unwrap().room_id().clone();
         tokio::spawn(async move {
             loop {
                 // Event-driven: wait for actions instead of tick-based loop
@@ -144,11 +141,11 @@ impl RoomManager {
             return room_id;
         }
 
-        let room = self.config.init_room(room_id.clone());
+        let room = Arc::new(Mutex::new(self.config.init_room(room_id.clone())));
 
         let (action_sender, action_receiver) = mpsc::channel(MAX_USER_ACTIONS);
         let (update_sender, update_receiver) = watch::channel(RoomUpdate {
-            room_state: room.get_censored_state_for(&"".to_string()),
+            room_state: room.lock().unwrap().get_censored_state_for(&"".to_string()),
             new_messages: vec![],
             notifications: vec![],
             room_closed: false,
@@ -156,14 +153,8 @@ impl RoomManager {
 
         eprintln!("Created room {}", &room_id);
 
-        let allowed_words = Arc::new(room.allowed_words.clone());
-        let banned_words = Arc::new(room.filter.config.banned_words.clone());
-        let sender_censor = room.sender_censor;
-        let receiver_censor = room.receiver_censor;
-        let shadow_ban = room.shadow_ban;
-
         let room_runner = RoomRunner {
-            room,
+            room: Arc::clone(&room),
             action_receiver,
             update_sender,
             room_manager: Arc::clone(&self),
@@ -173,11 +164,7 @@ impl RoomManager {
         let room_connector = RoomConnector {
             action_sender,
             update_receiver,
-            allowed_words,
-            banned_words,
-            sender_censor,
-            receiver_censor,
-            shadow_ban,
+            room: Arc::clone(&room),
         };
         self.active_rooms.insert(room_id.clone(), room_connector);
         room_id
