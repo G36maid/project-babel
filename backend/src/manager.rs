@@ -17,6 +17,7 @@ pub struct RoomRunner {
 pub struct RoomConnector {
     pub action_sender: mpsc::Sender<UserMessage>,
     pub update_receiver: watch::Receiver<RoomUpdate>,
+    pub update_sender: watch::Sender<RoomUpdate>,
     pub room: Arc<Mutex<ChatRoom>>,
 }
 
@@ -61,6 +62,16 @@ impl RoomRunner {
             notifications.extend(action_notifications);
         }
 
+        // Check for victory condition after processing all actions
+        let victory_state = {
+            let mut room = self.room.lock().unwrap();
+            if room.check_victory() {
+                Some(room.get_victory_state())
+            } else {
+                None
+            }
+        };
+
         // Check if room should close
         {
             let room = self.room.lock().unwrap();
@@ -81,6 +92,7 @@ impl RoomRunner {
             new_messages,
             notifications,
             room_closed,
+            victory: victory_state,
         };
 
         self.update_sender.send_replace(update);
@@ -148,22 +160,22 @@ impl RoomManager {
             room_state: room.lock().unwrap().get_censored_state_for(&"".to_string()),
             new_messages: vec![],
             notifications: vec![],
-            room_closed: false,
-        });
+            room_closed: false,            victory: None,        });
 
         eprintln!("Created room {}", &room_id);
 
         let room_runner = RoomRunner {
             room: Arc::clone(&room),
             action_receiver,
-            update_sender,
+            update_sender: update_sender.clone(),
             room_manager: Arc::clone(&self),
         };
         room_runner.run_in_background();
 
         let room_connector = RoomConnector {
             action_sender,
-            update_receiver,
+            update_receiver: update_receiver.clone(),
+            update_sender,
             room: Arc::clone(&room),
         };
         self.active_rooms.insert(room_id.clone(), room_connector);

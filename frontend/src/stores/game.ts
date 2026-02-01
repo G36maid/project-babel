@@ -23,6 +23,7 @@ export const useGameStore = defineStore('game', () => {
   const notifications = ref<string[]>([])
   const allowedWords = ref<string[]>([])
   const bannedWords = ref<Record<string, string[]>>({})
+  const victoryState = ref<RoomUpdate['victory'] | null>(null)
 
   // WebSocket instance (will be set in connect)
   let ws: ReturnType<typeof useWebSocket> | null = null
@@ -119,6 +120,14 @@ export const useGameStore = defineStore('game', () => {
             messages.value.push(...notificationMessages)
           }
 
+          // Check for victory
+          if (data.victory) {
+            victoryState.value = data.victory
+            if (data.victory.achieved) {
+              console.log('[WebSocket] 🎉 VICTORY ACHIEVED!')
+            }
+          }
+
           if (data.room_closed) {
             console.log('[WebSocket] Room closed by server')
             connectionState.value = 'disconnected'
@@ -154,6 +163,7 @@ export const useGameStore = defineStore('game', () => {
     ws = null
     connected.value = false
     connectionState.value = 'idle'
+    victoryState.value = null  // Clear victory state when leaving
   }
 
   function cleanup() {
@@ -168,6 +178,7 @@ export const useGameStore = defineStore('game', () => {
     notifications.value = []
     allowedWords.value = []
     bannedWords.value = {}
+    victoryState.value = null  // Clear victory state on cleanup
   }
 
   function setPlayerInfo(name: string, token: string) {
@@ -245,6 +256,7 @@ export const useGameStore = defineStore('game', () => {
     notifications,
     allowedWords,
     bannedWords,
+    victoryState,
     connect,
     sendMessage,
     leaveRoom,
