@@ -169,26 +169,26 @@ function clearNotes() {
 </script>
 
 <template>
-  <div class="notebook-panel bg-gray-800 rounded-lg p-4 shadow-lg">
+  <div class="notebook-panel bg-[var(--tg-bg-secondary)] rounded-lg p-4 shadow-lg">
     <div class="mb-4">
-      <h3 class="text-lg font-bold text-blue-400">📝 Banned Words Notebook</h3>
+      <h3 class="text-lg font-bold text-theme-accent">📝 Banned Words Notebook</h3>
     </div>
 
-    <div v-if="loading" class="text-center py-8 text-gray-400">
+    <div v-if="loading" class="text-center py-8 text-theme-secondary">
       Loading...
     </div>
 
-    <div v-else-if="activeCountries.length === 0" class="text-center py-8 text-gray-400">
+    <div v-else-if="activeCountries.length === 0" class="text-center py-8 text-theme-secondary">
       Waiting for players to join...
     </div>
 
-    <div v-else class="text-sm text-gray-400 mb-4">
+    <div v-else class="text-sm text-theme-secondary mb-4">
       Guess {{ totalWords }} banned words for {{ activeCountries.length }} active {{ activeCountries.length === 1 ? 'country' : 'countries' }}:
     </div>
 
     <div v-if="!loading && activeCountries.length > 0" class="space-y-3">
       <div v-for="country in activeCountries" :key="country" class="country-section flex items-center gap-3">
-        <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center font-bold text-white flex-shrink-0">
+        <div class="w-8 h-8 rounded-full bg-theme-accent flex items-center justify-center font-bold text-white flex-shrink-0">
           {{ country }}
         </div>
         
@@ -199,7 +199,7 @@ function clearNotes() {
             v-model="(notes as any)[country][i - 1]"
             type="text"
             :placeholder="`Word ${i}`"
-            class="bg-gray-700 border border-gray-600 rounded px-4 py-3 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
+            class="bg-[var(--tg-bg)] border border-[var(--tg-bg-chat)] rounded px-4 py-3 text-theme-primary text-base placeholder-theme-secondary focus:outline-none focus:border-theme-accent transition"
           />
         </div>
       </div>
@@ -209,13 +209,13 @@ function clearNotes() {
       <button
         @click="submitNotes"
         :disabled="!canSubmit || submitting || activeCountries.length === 0"
-        class="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-lg transition"
+        class="flex-1 bg-theme-accent hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-lg transition"
       >
         {{ submitting ? 'Submitting...' : 'Submit Guesses' }}
       </button>
     </div>
 
-    <div v-if="!loading && activeCountries.length > 0" class="text-xs text-gray-500 mt-3 text-center">
+    <div v-if="!loading && activeCountries.length > 0" class="text-xs text-theme-secondary mt-3 text-center">
       When all {{ activeCountries.length }} {{ activeCountries.length === 1 ? 'player discovers' : 'players discover' }} all {{ totalWords }} banned words, the game is won!
     </div>
   </div>
