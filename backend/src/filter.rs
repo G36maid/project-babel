@@ -1,4 +1,4 @@
-use crate::data::{CENSORSHIP_REPLACEMENT, CountryCode, FilterConfig};
+use crate::data::{CountryCode, FilterConfig, CENSORSHIP_REPLACEMENT};
 
 pub struct CensorshipFilter {
     pub(crate) config: &'static FilterConfig,
