@@ -150,12 +150,6 @@ async function submitNotes() {
     )
 
     submitResult.value = response
-    
-    if (response.victory_achieved) {
-      alert('🎉 Congratulations! All players have discovered all banned words!')
-    } else {
-      alert(`Submitted! You've discovered ${response.discovered_count} out of ${response.total_required} words.`)
-    }
   } catch (error) {
     console.error('Failed to submit notes:', error)
     alert('Failed to submit notes. Please try again.')
@@ -176,15 +170,8 @@ function clearNotes() {
 
 <template>
   <div class="notebook-panel bg-gray-800 rounded-lg p-4 shadow-lg">
-    <div class="flex justify-between items-center mb-4">
+    <div class="mb-4">
       <h3 class="text-lg font-bold text-blue-400">📝 Banned Words Notebook</h3>
-      <button
-        @click="clearNotes"
-        :disabled="loading"
-        class="text-sm text-gray-400 hover:text-gray-200 disabled:opacity-50 transition"
-      >
-        Clear All
-      </button>
     </div>
 
     <div v-if="loading" class="text-center py-8 text-gray-400">
@@ -199,40 +186,22 @@ function clearNotes() {
       Guess {{ totalWords }} banned words for {{ activeCountries.length }} active {{ activeCountries.length === 1 ? 'country' : 'countries' }}:
     </div>
 
-    <div v-if="!loading && activeCountries.length > 0" class="space-y-4">
-      <div v-for="country in activeCountries" :key="country" class="country-section">
-        <div class="flex items-center mb-2">
-          <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center font-bold text-white mr-3">
-            {{ country }}
-          </div>
-          <span class="text-gray-300 font-semibold">
-            Country {{ country }} ({{ wordCounts[country] || 1 }} {{ wordCounts[country] === 1 ? 'word' : 'words' }})
-          </span>
+    <div v-if="!loading && activeCountries.length > 0" class="space-y-3">
+      <div v-for="country in activeCountries" :key="country" class="country-section flex items-center gap-3">
+        <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center font-bold text-white flex-shrink-0">
+          {{ country }}
         </div>
         
-        <div :class="[
-          'grid gap-2 ml-11',
-          wordCounts[country] === 2 ? 'grid-cols-2' : 'grid-cols-3'
-        ]">
+        <div class="flex-1 grid gap-2 grid-cols-1">
           <input
             v-for="i in wordCounts[country]"
             :key="i"
             v-model="(notes as any)[country][i - 1]"
             type="text"
             :placeholder="`Word ${i}`"
-            class="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
+            class="bg-gray-700 border border-gray-600 rounded px-4 py-3 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
           />
         </div>
-      </div>
-    </div>
-
-    <div v-if="submitResult" class="mt-4 p-3 rounded bg-gray-700">
-      <div class="text-sm text-gray-300">
-        <span class="font-semibold text-green-400">Progress:</span>
-        {{ submitResult.discovered_count }} / {{ submitResult.total_required }} words discovered
-      </div>
-      <div v-if="submitResult.victory_achieved" class="text-green-400 font-bold mt-1">
-        🎉 Victory Achieved!
       </div>
     </div>
 
