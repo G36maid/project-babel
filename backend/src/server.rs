@@ -1,17 +1,36 @@
 use std::collections::HashMap;
+use utoipa::{OpenApi, ToSchema};
+use utoipa_swagger_ui::SwaggerUi;
+
 #[derive(Deserialize)]
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 struct SolveResponse {
     solved: bool,
 }
 // POST /api/rooms/{id}/solve - Check if submitted banned words match exactly
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 struct SolveRequest {
     answer: HashMap<String, Vec<String>>,
 }
 
 // POST /api/rooms/{id}/solve - Check if submitted banned words match exactly, and send system message if correct
+#[utoipa::path(
+    post,
+    path = "/api/rooms/{id}/solve",
+    params(
+        ("id" = String, Path, description = "Room ID")
+    ),
+    request_body = SolveRequest,
+    responses(
+        (status = 200, description = "Solution check result", body = SolveResponse),
+        (status = 403, description = "Forbidden (invalid token)"),
+        (status = 404, description = "Room not found")
+    ),
+    security(
+        ("api_key" = [])
+    )
+)]
 async fn solve_room(
     State(state): State<AppState>,
     Path(room_id): Path<RoomId>,
@@ -56,13 +75,24 @@ async fn solve_room(
 use futures::SinkExt;
 use futures::StreamExt;
 use serde::Serialize;
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 struct RoomWordsInfo {
     allowed_words: Vec<String>,
     banned_words: std::collections::HashMap<String, Vec<String>>,
 }
 
 // GET /api/rooms/{id}/info - Return allowed and banned words for the room
+#[utoipa::path(
+    get,
+    path = "/api/rooms/{id}/info",
+    params(
+        ("id" = String, Path, description = "Room ID")
+    ),
+    responses(
+        (status = 200, description = "Room words info", body = RoomWordsInfo),
+        (status = 404, description = "Room not found")
+    )
+)]
 async fn get_room_words_info(
     State(state): State<AppState>,
     Path(room_id): Path<RoomId>,
@@ -103,7 +133,7 @@ use crate::data::*;
 use crate::manager::{RoomConnector, RoomManager};
 
 /// Update sent to clients with messages censored for their specific country.
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, ToSchema)]
 struct ClientRoomUpdate {
     room_state: RoomState,
     new_messages: Vec<CensoredMessage>,
@@ -201,22 +231,30 @@ pub struct AppState {
     pub tokens_map: Arc<DashMap<String, (UserId, CountryCode)>>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct ConnectQuery {
     token: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 struct LoginRequest {
     username: String,
     country: String,
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, ToSchema)]
 struct LoginResponse {
     token: String,
 }
 // POST /api/login - Login and get token
+#[utoipa::path(
+    post,
+    path = "/api/login",
+    request_body = LoginRequest,
+    responses(
+        (status = 200, description = "Login successful", body = LoginResponse)
+    )
+)]
 async fn login(
     State(state): State<AppState>,
     AxumJson(payload): AxumJson<LoginRequest>,
@@ -251,6 +289,13 @@ fn extract_user_from_headers(
 }
 
 // GET /api/info - Filter config
+#[utoipa::path(
+    get,
+    path = "/api/info",
+    responses(
+        (status = 200, description = "Get global filter config", body = RoomInfo)
+    )
+)]
 async fn get_info(State(state): State<AppState>) -> Json<RoomInfo> {
     let config = state.room_manager.get_filter_config();
     Json(RoomInfo {
@@ -259,11 +304,29 @@ async fn get_info(State(state): State<AppState>) -> Json<RoomInfo> {
 }
 
 // GET /api/rooms - List room IDs
+#[utoipa::path(
+    get,
+    path = "/api/rooms",
+    responses(
+        (status = 200, description = "List active room IDs", body = Vec<RoomId>)
+    )
+)]
 async fn list_rooms(State(state): State<AppState>) -> Json<Vec<RoomId>> {
     Json(state.room_manager.list_rooms())
 }
 
 // POST /api/rooms - Create room (requires auth)
+#[utoipa::path(
+    post,
+    path = "/api/rooms",
+    responses(
+        (status = 200, description = "Room created", body = RoomId),
+        (status = 403, description = "Forbidden")
+    ),
+    security(
+        ("api_key" = [])
+    )
+)]
 async fn create_room(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -478,6 +541,51 @@ async fn handle_spectator_socket(socket: WebSocket, connector: RoomConnector, ro
     }
 }
 
+#[derive(OpenApi)]
+#[openapi(
+    paths(
+        login,
+        get_info,
+        list_rooms,
+        create_room,
+        get_room_words_info,
+        solve_room
+    ),
+    components(
+        schemas(
+            LoginRequest, LoginResponse, RoomInfo, RoomId, 
+            RoomWordsInfo, SolveRequest, SolveResponse,
+            ClientRoomUpdate, ConnectQuery,
+            crate::data::FilterConfig, crate::data::Message, 
+            crate::data::CensoredMessage, crate::data::UserAction, 
+            crate::data::Participant, crate::data::RoomState, 
+            crate::data::Notification, crate::data::RoomUpdate
+        )
+    ),
+    tags(
+        (name = "babel", description = "Project Babel API")
+    ),
+    modifiers(&SecurityAddon)
+)]
+struct ApiDoc;
+
+struct SecurityAddon;
+
+impl utoipa::Modify for SecurityAddon {
+    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+        if let Some(components) = openapi.components.as_mut() {
+            components.add_security_scheme(
+                "api_key",
+                utoipa::openapi::security::SecurityScheme::ApiKey(
+                    utoipa::openapi::security::ApiKey::Header(
+                        utoipa::openapi::security::ApiKeyValue::new("X-User-Token"),
+                    ),
+                ),
+            )
+        }
+    }
+}
+
 pub fn build_router(state: AppState) -> Router {
     let cors = CorsLayer::new()
         .allow_origin(Any)
@@ -485,6 +593,7 @@ pub fn build_router(state: AppState) -> Router {
         .allow_headers(Any);
 
     Router::new()
+        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .route("/api/info", get(get_info))
         .route("/api/rooms", get(list_rooms))
         .route("/api/rooms", post(create_room))

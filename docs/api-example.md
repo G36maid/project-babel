@@ -4,31 +4,46 @@
 
 ## Authentication
 
-All authenticated endpoints require the `X-User-Token` header.
-
-**Test tokens:**
-| Token | User ID | Country |
-|-------|---------|---------|
-| `test-token-alice` | alice | A |
-| `test-token-bob` | bob | B |
-| `test-token-charlie` | charlie | C |
-| `test-token` | testuser | A |
+Most endpoints require a token obtained via the login endpoint.
+For HTTP requests, pass the token in the `X-User-Token` header.
+For WebSocket connections, pass the token as a query parameter `?token=<token>`.
 
 ---
 
 ## HTTP Endpoints
 
+### POST /api/login
+
+Creates a new session and returns an authentication token.
+
+**Request:**
+```json
+{
+  "username": "alice",
+  "country": "A"
+}
+```
+
+**Response:**
+```json
+{
+  "token": "a1b2c3d4e5f6g7h8"
+}
+```
+
 ### GET /api/info
 
-Returns server information and filter configuration.
+Returns server information and global filter configuration.
 
 **Response:**
 ```json
 {
   "filter_config": {
-    "A": ["freedom", "democracy", "protest"],
-    "B": ["monarchy", "tradition", "heritage"],
-    "C": ["capitalism", "profit", "market"]
+    "banned_words": {
+      "A": ["freedom", "democracy", "protest"],
+      "B": ["monarchy", "tradition", "heritage"],
+      "C": ["capitalism", "profit", "market"]
+    }
   }
 }
 ```
@@ -57,13 +72,57 @@ Creates a new room. Requires authentication.
 **Errors:**
 - `403 Forbidden` - Invalid or missing token
 
+### GET /api/rooms/:roomId/info
+
+Returns allowed and banned words for the specific room.
+
+**Response:**
+```json
+{
+  "allowed_words": ["apple", "banana"],
+  "banned_words": {
+    "A": ["badword"]
+  }
+}
+```
+
+### POST /api/rooms/:roomId/solve
+
+Submits a solution for the censorship puzzle. Requires authentication.
+
+**Headers:**
+- `X-User-Token: <token>`
+
+**Request:**
+```json
+{
+  "answer": {
+    "A": ["word1", "word2"],
+    "B": ["word3"]
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "solved": true
+}
+```
+
 ---
 
 ## WebSocket Endpoints
 
-### WS /api/rooms/:roomId/connect
+### WS /api/rooms/:roomId/connect?token=<token>
 
-Connect as a participant (can send messages). Requires authentication via `X-User-Token` header.
+Connect as a participant (can send messages).
+**Query Parameters:**
+- `token`: The authentication token obtained from `/api/login`.
+
+### WS /api/rooms/:roomId/spectate
+
+Connect as a spectator (read-only). No authentication required.
 
 ---
 
@@ -76,19 +135,24 @@ Connect as a participant (can send messages). Requires authentication via `X-Use
 {"send_message": "Your message content here"}
 ```
 
-**Leave Room:**
+**Send Message (Array):**
 ```json
-"leave_room"
+{"send_message_array": ["word1", "word2"]}
 ```
 
-**send note:**
+**Send Note:**
 ```json
 {
   "send_note": {
     "A": ["wordA", "wordB"],
-    "B": [],
+    "B": []
   }
 }
+```
+
+**Leave Room:**
+```json
+"leave_room"
 ```
 
 ### Server → Client (RoomUpdate)
@@ -138,7 +202,6 @@ Messages are filtered based on both sender's and receiver's country rules. Banne
 - **Country A:** freedom, democracy, protest
 - **Country B:** monarchy, tradition, heritage
 - **Country C:** capitalism, profit, market
-- **Country D:** capitalism, profit, market
 
 ---
 
@@ -147,8 +210,6 @@ Messages are filtered based on both sender's and receiver's country rules. Banne
 | Code | Description |
 |------|-------------|
 | 200 | Success |
-| 403 | Invalid or missing X-User-Token |
+| 403 | Invalid or missing token |
 | 404 | Room not found |
 | 101 | WebSocket upgrade successful |
-
----

@@ -22,6 +22,7 @@
 **Service URLs**:
 - Frontend: `http://localhost:8080` (Nginx production build)
 - Backend: `http://localhost:3000` (Rust Axum)
+- API Documentation: `http://localhost:3000/swagger-ui/`
 
 **Network**: Services communicate via `babel-network` bridge (defined in docker-compose.yml)
 
