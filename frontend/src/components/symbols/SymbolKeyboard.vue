@@ -42,29 +42,31 @@ function onClose() {
 <template>
   <div 
     v-if="visible"
-    class="bg-[var(--tg-bg-secondary)] border-t border-[var(--tg-bg-chat)] p-2"
+    class="bg-[var(--tg-bg-secondary)] border-t border-[var(--tg-bg-chat)]"
   >
-    <div class="flex justify-between items-center mb-2 px-1">
-      <span class="text-[var(--tg-text-secondary)] text-sm">Symbol Keyboard</span>
+    <div class="flex justify-between items-center py-1 px-2">
+      <span class="text-[var(--tg-text-secondary)] text-xs">Symbols</span>
       <button 
         @click="onClose"
-        class="text-[var(--tg-text-secondary)] hover:text-[var(--tg-text)] px-2 py-1 rounded"
+        class="text-[var(--tg-text-secondary)] hover:text-[var(--tg-text)] px-1.5 py-0.5 text-sm"
       >
         ✕
       </button>
     </div>
     
-    <!-- 4x7 Grid -->
-    <div class="grid grid-cols-7 gap-1">
-      <button
-        v-for="word in allSymbols"
-        :key="word"
-        @click="onSymbolClick(word)"
-        class="aspect-square flex items-center justify-center text-2xl bg-[var(--tg-bg)] hover:bg-[var(--tg-bg-chat)] rounded transition-colors min-h-[44px] min-w-[44px]"
-        :title="word"
-      >
-        <SymbolRenderer :word="word" :size="28" />
-      </button>
+    <!-- Compact Grid with Max Height -->
+    <div class="overflow-x-auto overflow-y-auto max-h-48 px-2 pb-2">
+      <div class="flex flex-wrap gap-1">
+        <button
+          v-for="word in allSymbols"
+          :key="word"
+          @click="onSymbolClick(word)"
+          class="w-20 h-20 flex-shrink-0 flex items-center justify-center bg-[var(--tg-bg)] hover:bg-[var(--tg-bg-chat)] rounded transition-colors"
+          :title="word"
+        >
+          <SymbolRenderer :word="word" :size="20" />
+        </button>
+      </div>
     </div>
   </div>
 </template>

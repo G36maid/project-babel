@@ -30,16 +30,16 @@ function toggleSymbolKeyboard() {
 </script>
 
 <template>
-  <div class="bg-[var(--tg-bg-secondary)] px-2 py-2 flex items-end gap-2 border-t border-[var(--tg-bg-chat)]">
+  <div class="bg-[var(--tg-bg-secondary)] px-2 py-2 flex items-center gap-2 border-t border-[var(--tg-bg-chat)]">
     <!-- Attachment Button (Paperclip) -->
-    <button class="p-2 text-[var(--tg-text-secondary)] hover:text-[var(--tg-text)] transition-colors mb-1">
+    <button class="p-2 text-[var(--tg-text-secondary)] hover:text-[var(--tg-text)] transition-colors flex-shrink-0">
        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M15.5 10C15.5 6.96243 13.0376 4.5 10 4.5C6.96243 4.5 4.5 6.96243 4.5 10V16.5C4.5 18.9853 6.51472 21 9 21C11.4853 21 13.5 18.9853 13.5 16.5V9.5C13.5 8.39543 12.6046 7.5 11.5 7.5C10.3954 7.5 9.5 8.39543 9.5 9.5V15.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
     </button>
 
     <!-- Input Area -->
-    <div class="flex-1 min-w-0 bg-[var(--tg-bg)] rounded-3xl flex items-center px-4 py-3 shadow-sm mb-1">
+    <div class="flex-1 min-w-0 bg-[var(--tg-bg)] rounded-3xl flex items-center px-4 py-3 shadow-sm">
       <input
         v-model="modelValue"
         @keydown="onKeydown"
@@ -67,7 +67,7 @@ function toggleSymbolKeyboard() {
     <!-- Send / Mic Button -->
     <button
       @click="onSend"
-      class="p-3 rounded-full mb-1 transition-all transform active:scale-95 flex items-center justify-center flex-shrink-0"
+      class="p-3 rounded-full transition-all transform active:scale-95 flex items-center justify-center flex-shrink-0"
       :class="[
         canSend 
           ? 'bg-[var(--tg-accent)] text-white shadow-md' 
