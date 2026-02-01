@@ -42,11 +42,14 @@ impl RoomRunner {
 
         for user_message in user_messages {
             // Handle join if user not in room
-            if !self.room.participants().iter().any(|p| p.user_id == user_message.user_id) {
-                self.room.add_participant(
-                    user_message.user_id.clone(),
-                    user_message.country.clone(),
-                );
+            if !self
+                .room
+                .participants()
+                .iter()
+                .any(|p| p.user_id == user_message.user_id)
+            {
+                self.room
+                    .add_participant(user_message.user_id.clone(), user_message.country.clone());
                 notifications.push(Notification {
                     message: format!("{} joined the room", user_message.user_id),
                 });

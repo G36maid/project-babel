@@ -1,8 +1,8 @@
+use rand::prelude::IndexedRandom;
 use rand::seq::SliceRandom;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs;
-use rand::prelude::IndexedRandom;
 
 #[derive(Debug, Deserialize)]
 pub struct Words {
@@ -16,7 +16,10 @@ pub fn load_words(path: &str) -> Words {
 }
 
 /// Returns (allowed_words, banned_map) where banned_map: country_code -> Vec<String>
-pub fn generate_allowed_and_banned_words(words: &Words, country_codes: &[&str]) -> (Vec<String>, HashMap<String, Vec<String>>) {
+pub fn generate_allowed_and_banned_words(
+    words: &Words,
+    country_codes: &[&str],
+) -> (Vec<String>, HashMap<String, Vec<String>>) {
     let mut rng = rand::rng();
     // 1. Pick one word from each censored group
     let mut complex_words: Vec<String> = words

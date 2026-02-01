@@ -87,7 +87,8 @@ mod tests {
 
         let sender = "A".to_string();
         let receiver = "C".to_string();
-        let (result, censored) = filter.censor_message("This is bad", Some(&sender), Some(&receiver));
+        let (result, censored) =
+            filter.censor_message("This is bad", Some(&sender), Some(&receiver));
         assert!(censored);
         assert_eq!(result, "This is ***");
     }
@@ -99,7 +100,8 @@ mod tests {
 
         let sender = "C".to_string();
         let receiver = "B".to_string();
-        let (result, censored) = filter.censor_message("This is wrong", Some(&sender), Some(&receiver));
+        let (result, censored) =
+            filter.censor_message("This is wrong", Some(&sender), Some(&receiver));
         assert!(censored);
         assert_eq!(result, "This is ***");
     }
@@ -111,7 +113,8 @@ mod tests {
 
         let sender = "A".to_string();
         let receiver = "B".to_string();
-        let (result, censored) = filter.censor_message("bad and wrong", Some(&sender), Some(&receiver));
+        let (result, censored) =
+            filter.censor_message("bad and wrong", Some(&sender), Some(&receiver));
         assert!(censored);
         assert_eq!(result, "*** and ***");
     }
@@ -123,7 +126,8 @@ mod tests {
 
         let sender = "A".to_string();
         let receiver = "B".to_string();
-        let (result, censored) = filter.censor_message("Hello world", Some(&sender), Some(&receiver));
+        let (result, censored) =
+            filter.censor_message("Hello world", Some(&sender), Some(&receiver));
         assert!(!censored);
         assert_eq!(result, "Hello world");
     }
