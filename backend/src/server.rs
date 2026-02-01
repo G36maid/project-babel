@@ -85,6 +85,8 @@ async fn submit_notes(
     // Update player's notes
     room.player_notes.insert(user.user_id.clone(), payload.notes);
     
+    eprintln!("[SubmitNotes] User {} submitted notes", user.user_id);
+    
     // Calculate progress for this specific user
     let all_progress = room.get_player_progress();
     let user_progress = all_progress.iter()
@@ -95,11 +97,18 @@ async fn submit_notes(
         .map(|words| words.len())
         .sum();
     
+    eprintln!("[SubmitNotes] Progress: {} discovered {} / {} words", 
+              user.user_id, discovered_count, total_required);
+    
     // Check victory
     let victory_achieved = room.check_victory();
     
+    eprintln!("[SubmitNotes] Victory check result: {}", victory_achieved);
+    eprintln!("[SubmitNotes] All progress: {:?}", all_progress);
+    
     // If victory achieved, broadcast update
     if victory_achieved {
+        eprintln!("[SubmitNotes] Broadcasting victory state!");
         // Create and send victory update
         let victory_state = room.get_victory_state();
         let room_state = room.get_censored_state_for(&"".to_string());
@@ -185,6 +194,7 @@ struct ClientRoomUpdate {
     new_messages: Vec<CensoredMessage>,
     notifications: Vec<Notification>,
     room_closed: bool,
+    victory: Option<VictoryState>,
 }
 
 /// Censors a message based on banned words for a specific country.
@@ -489,6 +499,7 @@ async fn handle_participant_socket(
                             new_messages: censored_messages,
                             notifications: update.notifications,
                             room_closed: update.room_closed,
+                            victory: update.victory,
                         };
 
                         debug!(
