@@ -5,19 +5,52 @@ use crate::data::*;
 use crate::filter::CensorshipFilter;
 use crate::words::{generate_allowed_and_banned_words, load_words};
 
+/// A chat room that manages participants, messages, and country-based censorship.
+///
+/// `ChatRoom` is the core game entity that handles real-time communication between
+/// players from different countries. Messages are filtered based on country-specific
+/// banned word lists, creating an asymmetric information environment where players
+/// must deduce what words are censored for other countries.
+///
+/// # Censorship Mechanics
+///
+/// The room supports three censorship modes controlled by boolean flags:
+/// - `sender_censor`: Censors words banned in the sender's country
+/// - `receiver_censor`: Censors words banned in the receiver's country
+/// - `shadow_ban`: When enabled, users see their own messages uncensored
+///
+/// # Example
+///
+/// ```ignore
+/// let room = ChatRoom::new("room_1".to_string(), &config);
+/// room.add_participant("alice".to_string(), "US".to_string());
+/// let (msg, notifs) = room.process_action(&"alice", &"US", UserAction::SendMessage("hello".into()));
+/// ```
 pub struct ChatRoom {
+    /// Unique identifier for this room.
     room_id: RoomId,
+    /// Static reference to the filter configuration (banned words, replacement text).
     #[allow(dead_code)]
     config: &'static FilterConfig,
+    /// List of participants currently in the room.
     participants: Vec<Participant>,
+    /// All messages sent in this room.
     messages: Vec<Message>,
+    /// Counter for generating unique message IDs.
     message_counter: MessageId,
+    /// The censorship filter that processes messages based on country rules.
     pub(crate) filter: CensorshipFilter,
+    /// Words that participants are allowed to use in messages.
     pub(crate) allowed_words: Vec<String>,
+    /// Whether to apply censorship based on the sender's country.
     pub sender_censor: bool,
+    /// Whether to apply censorship based on the receiver's country.
     pub receiver_censor: bool,
+    /// Whether users see their own messages uncensored (shadow ban mode).
     pub shadow_ban: bool,
+    /// Countries that are exempt from censorship.
     pub allowed: HashSet<String>,
+    /// Player notes storing hypotheses about banned words per country.
     pub(crate) player_notes: HashMap<UserId, HashMap<CountryCode, Vec<String>>>,
 }
 
