@@ -1,4 +1,4 @@
-FROM rust:1.93-slim-bookworm AS chef
+FROM docker.io/rust:1.93-slim-bookworm AS chef
 RUN cargo install cargo-chef --locked
 WORKDIR /app
 
@@ -8,6 +8,8 @@ RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef AS builder
 COPY --from=planner /app/recipe.json recipe.json
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl && rm -rf /var/lib/apt/lists/*
 RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
 RUN cargo build --release -p babel
