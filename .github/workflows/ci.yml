@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  backend:
+    name: Backend (Rust)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - name: Rust Cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: backend
+      - name: Check Formatting
+        run: cargo fmt --all -- --check
+        working-directory: backend
+      - name: Lint (Clippy)
+        run: cargo clippy -- -D warnings
+        working-directory: backend
+      - name: Run Tests
+        run: cargo test
+        working-directory: backend
+
+  frontend:
+    name: Frontend (Vue)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+        working-directory: frontend
+      - name: Check Formatting & Lint (Biome)
+        run: bun run check
+        working-directory: frontend
+      - name: Type Check
+        run: bunx vue-tsc -b
+        working-directory: frontend
+
+  lint:
+    name: Lint Config Files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install yamllint
+        run: pip install yamllint
+      - name: Run yamllint
+        run: yamllint .
