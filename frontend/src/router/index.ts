@@ -7,7 +7,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('../views/HomeView.vue'),
   },
   {
-    path: '/game',
+    path: '/game/:roomId',
     name: 'game',
     component: () => import('../views/GameView.vue'),
   },
