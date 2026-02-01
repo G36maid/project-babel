@@ -60,6 +60,19 @@ struct SolveRequest {
     answer: HashMap<String, Vec<String>>,
 }
 
+#[derive(Deserialize)]
+struct SubmitNotesRequest {
+    notes: HashMap<String, Vec<String>>,
+}
+
+#[derive(Serialize)]
+struct SubmitNotesResponse {
+    success: bool,
+    discovered_count: usize,
+    total_required: usize,
+    victory_achieved: bool,
+}
+
 // POST /api/rooms/{id}/solve - Check if submitted banned words match exactly, and send system message if correct
 #[utoipa::path(
     post,
@@ -94,6 +107,69 @@ async fn solve_room(
     }
     Ok(Json(SolveResponse { solved: result }))
 }
+
+// POST /api/rooms/{id}/submit_notes - Submit player's guesses for banned words
+async fn submit_notes(
+    State(state): State<AppState>,
+    Path(room_id): Path<RoomId>,
+    headers: HeaderMap,
+    AxumJson(payload): AxumJson<SubmitNotesRequest>,
+) -> Result<Json<SubmitNotesResponse>, StatusCode> {
+    let user = extract_user_from_headers(&headers, &state.tokens_map)
+        .ok_or(StatusCode::FORBIDDEN)?;
+    
+    let connector = state.room_manager.connect_to_room(&room_id)
+        .ok_or(StatusCode::NOT_FOUND)?;
+    
+    let mut room = connector.room.lock().unwrap();
+    
+    // Update player's notes
+    room.player_notes.insert(user.user_id.clone(), payload.notes);
+    
+    // Calculate progress for this specific user
+    let all_progress = room.get_player_progress();
+    let user_progress = all_progress.iter()
+        .find(|p| p.user_id == user.user_id);
+    
+    let discovered_count = user_progress.map(|p| p.discovered_count).unwrap_or(0);
+    let total_required = room.filter.config.banned_words.values()
+        .map(|words| words.len())
+        .sum();
+    
+    // Check victory
+    let victory_achieved = room.check_victory();
+    
+    // If victory achieved, broadcast update
+    if victory_achieved {
+        // Create and send victory update
+        let victory_state = room.get_victory_state();
+        let room_state = room.get_censored_state_for(&"".to_string());
+        
+        drop(room); // Release lock before sending
+        
+        let update = RoomUpdate {
+            room_state,
+            new_messages: vec![],
+            notifications: vec![Notification {
+                message: "🎉 Victory! All players discovered all banned words!".to_string()
+            }],
+            room_closed: false,
+            victory: Some(victory_state),
+        };
+        
+        connector.update_sender.send_replace(update);
+    } else {
+        drop(room); // Release lock
+    }
+    
+    Ok(Json(SubmitNotesResponse {
+        success: true,
+        discovered_count,
+        total_required,
+        victory_achieved,
+    }))
+}
+
 use futures::SinkExt;
 use futures::StreamExt;
 use serde::Serialize;
@@ -420,6 +496,7 @@ async fn handle_participant_socket(
     let RoomConnector {
         action_sender,
         mut update_receiver,
+        update_sender: _,
         room,
     } = connector;
 
@@ -634,6 +711,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/rooms/{id}/info", get(get_room_words_info))
         .route("/api/rooms/{id}/solve", post(solve_room))
         .route("/api/rooms/{id}/solve_with_note", post(solve_room_with_note))
+        .route("/api/rooms/{id}/submit_notes", post(submit_notes))
         .route("/api/login", post(login))
         .layer(TraceLayer::new_for_http())
         .layer(cors)
