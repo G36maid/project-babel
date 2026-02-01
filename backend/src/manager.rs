@@ -19,6 +19,9 @@ pub struct RoomConnector {
     pub update_receiver: watch::Receiver<RoomUpdate>,
     pub allowed_words: Arc<Vec<String>>,
     pub banned_words: Arc<std::collections::HashMap<String, Vec<String>>>,
+    pub sender_censor: bool,
+    pub receiver_censor: bool,
+    pub shadow_ban: bool,
 }
 
 pub struct RoomManager {
@@ -72,18 +75,13 @@ impl RoomRunner {
             room_closed = true;
         }
 
-        // Create update for each connected participant's country
-        // For simplicity, we broadcast a "neutral" state and let clients filter
-        // In production, you might want per-country channels
+        // Broadcast raw room state and messages - censorship is applied per-user
+        // in the WebSocket handler based on each user's country
         let room_state = self.room.get_censored_state_for(&"".to_string());
-        let censored_new_messages: Vec<CensoredMessage> = new_messages
-            .iter()
-            .map(|msg| self.room.censor_message_for(msg, &"".to_string()))
-            .collect();
 
         let update = RoomUpdate {
             room_state,
-            new_messages: censored_new_messages,
+            new_messages,
             notifications,
             room_closed,
         };
@@ -160,6 +158,9 @@ impl RoomManager {
 
         let allowed_words = Arc::new(room.allowed_words.clone());
         let banned_words = Arc::new(room.filter.config.banned_words.clone());
+        let sender_censor = room.sender_censor;
+        let receiver_censor = room.receiver_censor;
+        let shadow_ban = room.shadow_ban;
 
         let room_runner = RoomRunner {
             room,
@@ -174,6 +175,9 @@ impl RoomManager {
             update_receiver,
             allowed_words,
             banned_words,
+            sender_censor,
+            receiver_censor,
+            shadow_ban,
         };
         self.active_rooms.insert(room_id.clone(), room_connector);
         room_id
