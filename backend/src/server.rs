@@ -44,10 +44,7 @@ fn solve_answer(room: &mut crate::room::ChatRoom, answer: HashMap<String, Vec<St
     true
 }
 use std::collections::HashMap;
-#[derive(Deserialize)]
 
-#[derive(Serialize)]
-use std::collections::HashMap;
 use utoipa::{OpenApi, ToSchema};
 use utoipa_swagger_ui::SwaggerUi;
 
