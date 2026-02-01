@@ -28,6 +28,10 @@
 - **Strictness**: `strict: false` in `tsconfig`. Prefer types, but `any` is allowed if blocked.
 - **Styling**: Tailwind utility classes. `class="p-4 bg-gray-900"`.
 - **Store**: Pinia stores in `src/stores/`. Use `setup` syntax for stores.
+- **Linting & Formatting**: **Biome** (Unified Tool).
+  - Check & Auto-fix: `bun run check`
+  - Lint only: `bun run lint`
+  - Format only: `bun run format`
 - **Components**: `<script setup lang="ts">`. Order: imports, props/emits, logic.
 
 ```vue
@@ -81,8 +85,9 @@ async fn handler() -> Result<Json<Data>, StatusCode> {
 2.  **Bun**: Use `bun` for frontend (faster than npm).
 3.  **No Type Suppression**: Avoid `@ts-ignore` unless absolutely necessary.
 4.  **Verification**:
-    - **Rust**: `cargo check` && `cargo clippy`.
-    - **Vue**: `bunx vue-tsc -b`.
+    - **Rust**: `cargo check` && `cargo clippy` && `cargo fmt`.
+    - **Vue**: `bunx vue-tsc -b` && `bun run check` (Biome).
+    - **General**: `yamllint .` (Check YAML syntax).
     - **Logic**: Verify manually via browser or `curl` if no auto-tests exist.
 
 ## 🌿 Branch & Commit Strategy

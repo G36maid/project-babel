@@ -1,0 +1,15 @@
+extends: default
+
+ignore: |
+  frontend/node_modules/
+  node_modules/
+  target/
+  .git/
+
+rules:
+  line-length:
+    max: 120
+    level: warning
+  document-start: disable
+  truthy:
+    check-keys: false
