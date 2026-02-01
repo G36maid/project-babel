@@ -7,6 +7,9 @@ use crate::data::*;
 use crate::filter::CensorshipFilter;
 use crate::words::{generate_allowed_and_banned_words, load_words};
 
+/// Game instructions message displayed when a room is created
+const GAME_INSTRUCTIONS: &str = "Welcome to Project Babel! You are trying to communicate across a censorship firewall. Each country has different words that are banned. Work together to discover which words are censored for each country using the allowed symbols. Good luck!";
+
 /// A chat room that manages participants, messages, and country-based censorship.
 ///
 /// `ChatRoom` is the core game entity that handles real-time communication between
@@ -74,12 +77,22 @@ impl ChatRoom {
                 .insert(country.clone(), banned.clone());
         }
         let config_ref: &'static FilterConfig = Box::leak(Box::new(config_owned));
+        
+        // Create initial game instructions message
+        let game_instructions = Message {
+            id: 1,
+            sender_id: "SYSTEM".to_string(),
+            sender_country: "".to_string(),
+            content: GAME_INSTRUCTIONS.to_string(),
+            timestamp: Self::current_timestamp(),
+        };
+        
         Self {
             room_id,
             config: config_ref,
             participants: Vec::new(),
-            messages: Vec::new(),
-            message_counter: 0,
+            messages: vec![game_instructions],
+            message_counter: 1,
             filter: CensorshipFilter::new(config_ref),
             allowed_words,
             sender_censor: false,
@@ -89,6 +102,21 @@ impl ChatRoom {
             player_notes: HashMap::new(),
             victory_achieved: false,
             victory_timestamp: None,
+        }
+    }
+
+    pub fn win(&mut self) {
+        let msg = format!("[SYSTEM] Censorship puzzle is finished!");
+        self.message_counter += 1;
+        self.messages.push(crate::data::Message {
+            id: self.message_counter,
+            sender_id: "SYSTEM".to_string(),
+            sender_country: "".to_string(),
+            content: msg,
+            timestamp: Self::current_timestamp(),
+        });
+        for country in self.config.banned_words.keys() {
+            self.allowed.insert(country.clone());
         }
     }
 
@@ -250,6 +278,16 @@ impl ChatRoom {
             original_content = %message.content,
             "Processing message censorship"
         );
+
+        // System messages are never censored
+        if message.sender_id == "SYSTEM" {
+            return CensoredMessage {
+                id: message.id,
+                sender_id: message.sender_id.clone(),
+                content: message.content.clone(),
+                was_censored: false,
+            };
+        }
 
         let sender = if self.sender_censor && !self.allowed.contains(&message.sender_country) {
             trace!(
@@ -441,7 +479,7 @@ mod tests {
         );
         note_map.insert("B".to_string(), vec!["monarchy".to_string()]);
 
-        let action = UserAction::SendNote(note_map.clone());
+        let action = UserAction::SubmitNotes(note_map.clone());
         let (message, notifications) = room.process_action(&user_id, &country, action);
 
         // Should not create a message
@@ -471,7 +509,7 @@ mod tests {
 
         // Send an empty note
         let note_map = HashMap::new();
-        let action = UserAction::SendNote(note_map);
+        let action = UserAction::SubmitNotes(note_map);
         let (message, notifications) = room.process_action(&user_id, &country, action);
 
         // Should not create a message
@@ -504,7 +542,7 @@ mod tests {
             ],
         );
 
-        let action = UserAction::SendNote(note_map);
+        let action = UserAction::SubmitNotes(note_map);
         let (message, notifications) = room.process_action(&user_id, &country, action);
 
         assert!(message.is_none());
@@ -527,7 +565,7 @@ mod tests {
         let mut note_map = HashMap::new();
         note_map.insert("A".to_string(), vec!["freedom".to_string()]);
 
-        let action = UserAction::SendNote(note_map);
+        let action = UserAction::SubmitNotes(note_map);
         let (message, notifications) = room.process_action(&user_id, &country, action);
 
         assert!(message.is_none());
@@ -549,7 +587,7 @@ mod tests {
         // Send first note
         let mut note_map1 = HashMap::new();
         note_map1.insert("A".to_string(), vec!["freedom".to_string()]);
-        let action1 = UserAction::SendNote(note_map1.clone());
+        let action1 = UserAction::SubmitNotes(note_map1.clone());
         room.process_action(&user_id, &country, action1);
 
         // Verify first note is stored
@@ -561,7 +599,7 @@ mod tests {
             "B".to_string(),
             vec!["monarchy".to_string(), "tradition".to_string()],
         );
-        let action2 = UserAction::SendNote(note_map2.clone());
+        let action2 = UserAction::SubmitNotes(note_map2.clone());
         room.process_action(&user_id, &country, action2);
 
         // Verify only latest note is stored

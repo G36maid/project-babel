@@ -70,6 +70,7 @@ docker-compose ps
 **服務位置**:
 - Frontend: `http://localhost:8080`
 - Backend API: `http://localhost:3000`
+- API Documentation: `http://localhost:3000/swagger-ui/`
 
 **常用指令**:
 ```bash
@@ -118,6 +119,7 @@ docker-compose up -d --build
    **服務位置**:
    - Frontend: `http://localhost:5173`
    - Backend: `http://localhost:3000`
+   - API Documentation: `http://localhost:3000/swagger-ui/`
 
 ---
 

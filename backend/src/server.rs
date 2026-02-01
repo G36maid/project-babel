@@ -1,14 +1,61 @@
-use std::collections::HashMap;
-#[derive(Deserialize)]
-
-#[derive(Serialize)]
-struct SolveResponse {
-    solved: bool,
+// POST /api/rooms/{id}/solve_with_note - Use merged player notes to solve
+async fn solve_room_with_note(
+    State(state): State<AppState>,
+    Path(room_id): Path<RoomId>,
+    headers: HeaderMap,
+) -> Result<Json<SolveResponse>, StatusCode> {
+    let _user = extract_user_from_headers(&headers, &state.tokens_map)
+        .ok_or(StatusCode::FORBIDDEN)?;
+    let connector = state.room_manager.connect_to_room(&room_id)
+        .ok_or(StatusCode::NOT_FOUND)?;
+    let mut room = connector.room.lock().unwrap();
+    // 所有玩家的 player note 都要答對才算勝利
+    let notes: Vec<_> = room.player_notes.values().cloned().collect();
+    let mut all_correct = true;
+    for note in notes {
+        if !solve_answer(&mut room, note) {
+            all_correct = false;
+            break;
+        }
+    }
+    if all_correct {
+        room.win();
+    }
+    Ok(Json(SolveResponse { solved: all_correct }))
 }
-// POST /api/rooms/{id}/solve - Check if submitted banned words match exactly
-#[derive(Deserialize)]
+// Helper for answer checking and success action, used by both solve_room and solve_room_with_note
+fn solve_answer(room: &mut crate::room::ChatRoom, answer: HashMap<String, Vec<String>>) -> bool {
+    let banned_words = &room.filter.config.banned_words;
+    if answer.len() != banned_words.len() {
+        return false;
+    }
+    for (country, submitted) in &answer {
+        match banned_words.get(country) {
+            Some(expected) => {
+                let s1: std::collections::HashSet<_> = submitted.iter().collect();
+                let s2: std::collections::HashSet<_> = expected.iter().collect();
+                if s1 != s2 {
+                    return false;
+                }
+            }
+            None => return false,
+        }
+    }
+    true
+}
+use std::collections::HashMap;
+
+use utoipa::{OpenApi, ToSchema};
+use utoipa_swagger_ui::SwaggerUi;
+
+#[derive(Deserialize, ToSchema)]
 struct SolveRequest {
     answer: HashMap<String, Vec<String>>,
+}
+
+#[derive(Serialize, ToSchema)]
+struct SolveResponse {
+    solved: bool,
 }
 
 #[derive(Deserialize)]
@@ -24,47 +71,85 @@ struct SubmitNotesResponse {
     victory_achieved: bool,
 }
 
-// POST /api/rooms/{id}/solve - Check if submitted banned words match exactly, and send system message if correct
+// Helper for answer checking
+fn solve_answer(room: &mut crate::room::ChatRoom, answer: HashMap<String, Vec<String>>) -> bool {
+    let banned_words = &room.filter.config.banned_words;
+    if answer.len() != banned_words.len() {
+        return false;
+    }
+    for (country, submitted) in &answer {
+        match banned_words.get(country) {
+            Some(expected) => {
+                let s1: std::collections::HashSet<_> = submitted.iter().collect();
+                let s2: std::collections::HashSet<_> = expected.iter().collect();
+                if s1 != s2 {
+                    return false;
+                }
+            }
+            None => return false,
+        }
+    }
+    true
+}
+
+// POST /api/rooms/{id}/solve - Check if submitted banned words match exactly
+#[utoipa::path(
+    post,
+    path = "/api/rooms/{id}/solve",
+    params(
+        ("id" = String, Path, description = "Room ID")
+    ),
+    request_body = SolveRequest,
+    responses(
+        (status = 200, description = "Solution check result", body = SolveResponse),
+        (status = 403, description = "Forbidden (invalid token)"),
+        (status = 404, description = "Room not found")
+    ),
+    security(
+        ("api_key" = [])
+    )
+)]
 async fn solve_room(
     State(state): State<AppState>,
     Path(room_id): Path<RoomId>,
     headers: HeaderMap, // 新增
     AxumJson(payload): AxumJson<SolveRequest>,
 ) -> Result<Json<SolveResponse>, StatusCode> {
-    let user = extract_user_from_headers(&headers, &state.tokens_map)
+    let _user = extract_user_from_headers(&headers, &state.tokens_map)
         .ok_or(StatusCode::FORBIDDEN)?;
     let connector = state.room_manager.connect_to_room(&room_id)
         .ok_or(StatusCode::NOT_FOUND)?;
     let mut room = connector.room.lock().unwrap();
-    let banned_words = &room.filter.config.banned_words;
-    // Check if country sets match
-    if payload.answer.len() != banned_words.len() {
-        return Ok(Json(SolveResponse { solved: false }));
+    let result = solve_answer(&mut room, payload.answer);
+    if result {
+        room.win();
     }
-    for (country, submitted) in &payload.answer {
-        match banned_words.get(country) {
-            Some(expected) => {
-                let s1: std::collections::HashSet<_> = submitted.iter().collect();
-                let s2: std::collections::HashSet<_> = expected.iter().collect();
-                if s1 != s2 {
-                    return Ok(Json(SolveResponse { solved: false }));
-                }
-            }
-            None => return Ok(Json(SolveResponse { solved: false })),
+    Ok(Json(SolveResponse { solved: result }))
+}
+
+// POST /api/rooms/{id}/solve_with_note - Use merged player notes to solve
+async fn solve_room_with_note(
+    State(state): State<AppState>,
+    Path(room_id): Path<RoomId>,
+    headers: HeaderMap,
+) -> Result<Json<SolveResponse>, StatusCode> {
+    let _user = extract_user_from_headers(&headers, &state.tokens_map)
+        .ok_or(StatusCode::FORBIDDEN)?;
+    let connector = state.room_manager.connect_to_room(&room_id)
+        .ok_or(StatusCode::NOT_FOUND)?;
+    let mut room = connector.room.lock().unwrap();
+    let notes: Vec<_> = room.player_notes.values().cloned().collect();
+    let mut all_correct = true;
+    for note in notes {
+        if !solve_answer(&mut room, note) {
+            all_correct = false;
+            break;
         }
     }
-    // If correct, send system message
-    let msg = format!("[SYSTEM] {} solved the censorship puzzle!", user.user_id);
-    room.message_counter += 1;
-    let counter = room.message_counter;
-    room.messages.push(crate::data::Message {
-        id: counter,
-        sender_id: "SYSTEM".to_string(),
-        sender_country: "".to_string(),
-        content: msg,
-        timestamp: crate::room::ChatRoom::current_timestamp(),
-    });
-    Ok(Json(SolveResponse { solved: true }))
+    if all_correct {
+        room.win();
+    }
+    Ok(Json(SolveResponse { solved: all_correct }))
 }
 
 // POST /api/rooms/{id}/submit_notes - Submit player's guesses for banned words
@@ -141,13 +226,24 @@ async fn submit_notes(
 use futures::SinkExt;
 use futures::StreamExt;
 use serde::Serialize;
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 struct RoomWordsInfo {
     allowed_words: Vec<String>,
     banned_words: std::collections::HashMap<String, Vec<String>>,
 }
 
 // GET /api/rooms/{id}/info - Return allowed and banned words for the room
+#[utoipa::path(
+    get,
+    path = "/api/rooms/{id}/info",
+    params(
+        ("id" = String, Path, description = "Room ID")
+    ),
+    responses(
+        (status = 200, description = "Room words info", body = RoomWordsInfo),
+        (status = 404, description = "Room not found")
+    )
+)]
 async fn get_room_words_info(
     State(state): State<AppState>,
     Path(room_id): Path<RoomId>,
@@ -188,7 +284,7 @@ use crate::data::*;
 use crate::manager::{RoomConnector, RoomManager};
 
 /// Update sent to clients with messages censored for their specific country.
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, ToSchema)]
 struct ClientRoomUpdate {
     room_state: RoomState,
     new_messages: Vec<CensoredMessage>,
@@ -206,6 +302,16 @@ fn censor_message_for_country(
     receiver_censor: bool,
     shadow_ban: bool,
 ) -> CensoredMessage {
+    // System messages are never censored
+    if message.sender_id == "SYSTEM" {
+        return CensoredMessage {
+            id: message.id,
+            sender_id: message.sender_id.clone(),
+            content: message.content.clone(),
+            was_censored: false,
+        };
+    }
+    
     // Shadow ban: sender sees their own message uncensored
     if shadow_ban && &message.sender_country == viewer_country {
         return CensoredMessage {
@@ -287,22 +393,30 @@ pub struct AppState {
     pub tokens_map: Arc<DashMap<String, (UserId, CountryCode)>>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct ConnectQuery {
     token: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 struct LoginRequest {
     username: String,
     country: String,
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, ToSchema)]
 struct LoginResponse {
     token: String,
 }
 // POST /api/login - Login and get token
+#[utoipa::path(
+    post,
+    path = "/api/login",
+    request_body = LoginRequest,
+    responses(
+        (status = 200, description = "Login successful", body = LoginResponse)
+    )
+)]
 async fn login(
     State(state): State<AppState>,
     AxumJson(payload): AxumJson<LoginRequest>,
@@ -337,6 +451,13 @@ fn extract_user_from_headers(
 }
 
 // GET /api/info - Filter config
+#[utoipa::path(
+    get,
+    path = "/api/info",
+    responses(
+        (status = 200, description = "Get global filter config", body = RoomInfo)
+    )
+)]
 async fn get_info(State(state): State<AppState>) -> Json<RoomInfo> {
     let config = state.room_manager.get_filter_config();
     Json(RoomInfo {
@@ -345,11 +466,29 @@ async fn get_info(State(state): State<AppState>) -> Json<RoomInfo> {
 }
 
 // GET /api/rooms - List room IDs
+#[utoipa::path(
+    get,
+    path = "/api/rooms",
+    responses(
+        (status = 200, description = "List active room IDs", body = Vec<RoomId>)
+    )
+)]
 async fn list_rooms(State(state): State<AppState>) -> Json<Vec<RoomId>> {
     Json(state.room_manager.list_rooms())
 }
 
 // POST /api/rooms - Create room (requires auth)
+#[utoipa::path(
+    post,
+    path = "/api/rooms",
+    responses(
+        (status = 200, description = "Room created", body = RoomId),
+        (status = 403, description = "Forbidden")
+    ),
+    security(
+        ("api_key" = [])
+    )
+)]
 async fn create_room(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -566,6 +705,52 @@ async fn handle_spectator_socket(socket: WebSocket, connector: RoomConnector, ro
     }
 }
 
+#[derive(OpenApi)]
+#[openapi(
+    paths(
+        login,
+        get_info,
+        list_rooms,
+        create_room,
+        get_room_words_info,
+        solve_room
+    ),
+    components(
+        schemas(
+            LoginRequest, LoginResponse, RoomInfo, RoomId, 
+            RoomWordsInfo, SolveRequest, SolveResponse,
+            ClientRoomUpdate, ConnectQuery,
+            crate::data::FilterConfig, crate::data::Message, 
+            crate::data::CensoredMessage, crate::data::UserAction, 
+            crate::data::Participant, crate::data::RoomState, 
+            crate::data::Notification, crate::data::RoomUpdate,
+            crate::data::PlayerProgress, crate::data::VictoryState
+        )
+    ),
+    tags(
+        (name = "babel", description = "Project Babel API")
+    ),
+    modifiers(&SecurityAddon)
+)]
+struct ApiDoc;
+
+struct SecurityAddon;
+
+impl utoipa::Modify for SecurityAddon {
+    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+        if let Some(components) = openapi.components.as_mut() {
+            components.add_security_scheme(
+                "api_key",
+                utoipa::openapi::security::SecurityScheme::ApiKey(
+                    utoipa::openapi::security::ApiKey::Header(
+                        utoipa::openapi::security::ApiKeyValue::new("X-User-Token"),
+                    ),
+                ),
+            )
+        }
+    }
+}
+
 pub fn build_router(state: AppState) -> Router {
     let cors = CorsLayer::new()
         .allow_origin(Any)
@@ -573,6 +758,7 @@ pub fn build_router(state: AppState) -> Router {
         .allow_headers(Any);
 
     Router::new()
+        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .route("/api/info", get(get_info))
         .route("/api/rooms", get(list_rooms))
         .route("/api/rooms", post(create_room))
@@ -581,6 +767,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/rooms/{id}/info", get(get_room_words_info))
         .route("/api/rooms/{id}/solve", post(solve_room))
         .route("/api/rooms/{id}/submit_notes", post(submit_notes))
+        .route("/api/rooms/{id}/solve_with_note", post(solve_room_with_note))
         .route("/api/login", post(login))
         .layer(TraceLayer::new_for_http())
         .layer(cors)

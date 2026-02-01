@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useWebSocket } from '@vueuse/core'
 import { apiClient, getWebSocketUrl } from '@/api/client'
-import type { RoomUpdate, UserAction, ConnectionState, CensoredMessage } from '@/types/websocket'
+import type { RoomUpdate, UserAction, ConnectionState, CensoredMessage, RoomWordsInfo } from '@/types/websocket'
 
 interface LoginResponse {
   token: string
@@ -22,12 +22,30 @@ export const useGameStore = defineStore('game', () => {
   const roomState = ref<RoomUpdate['room_state'] | null>(null)
   const notifications = ref<string[]>([])
   const victoryState = ref<RoomUpdate['victory'] | null>(null)
+  const allowedWords = ref<string[]>([])
+  const bannedWords = ref<Record<string, string[]>>({})
 
   // WebSocket instance (will be set in connect)
   let ws: ReturnType<typeof useWebSocket> | null = null
 
   function generateRoomId() {
     return Math.random().toString(36).substring(2, 10)
+  }
+
+  async function fetchRoomWordsInfo(roomId: string) {
+    try {
+      const data = await apiClient.get<RoomWordsInfo>(`/rooms/${roomId}/info`)
+      allowedWords.value = data.allowed_words
+      bannedWords.value = data.banned_words
+      console.log('[Store] Fetched room words:', { 
+        allowedCount: data.allowed_words.length,
+        bannedCountries: Object.keys(data.banned_words).length
+      })
+    } catch (err) {
+      console.error('[Store] Failed to fetch room words info:', err)
+      allowedWords.value = []
+      bannedWords.value = {}
+    }
   }
 
   function connect(roomId: string, token: string) {
@@ -41,6 +59,8 @@ export const useGameStore = defineStore('game', () => {
 
     connectionState.value = 'connecting'
     console.log('[WebSocket] State: connecting')
+
+    fetchRoomWordsInfo(roomId)
 
     // Determine WebSocket URL using VITE_BACKEND_URL if configured
     const wsUrl = getWebSocketUrl(roomId, token)
@@ -75,8 +95,30 @@ export const useGameStore = defineStore('game', () => {
           const data = JSON.parse(event.data) as RoomUpdate
           console.log('[WebSocket] Parsed data:', data)
           roomState.value = data.room_state
+          
+          // Initialize messages from room state if this is the first update
+          if (messages.value.length === 0 && data.room_state.recent_messages.length > 0) {
+            messages.value = [...data.room_state.recent_messages]
+          }
+          
+          // Add new messages
           messages.value.push(...data.new_messages)
-          notifications.value.push(...data.notifications.map(n => n.message))
+          
+          // Convert notifications to system messages
+          if (data.notifications && data.notifications.length > 0) {
+            // Generate IDs based on the last message ID to avoid collisions
+            const lastMessageId = messages.value.length > 0 
+              ? Math.max(...messages.value.map(m => m.id))
+              : 0
+            
+            const notificationMessages: CensoredMessage[] = data.notifications.map((n, index) => ({
+              id: lastMessageId + index + 1,
+              sender_id: 'SYSTEM',
+              content: n.message,
+              was_censored: false
+            }))
+            messages.value.push(...notificationMessages)
+          }
 
           // Check for victory
           if (data.victory) {
@@ -135,6 +177,8 @@ export const useGameStore = defineStore('game', () => {
     roomState.value = null
     notifications.value = []
     victoryState.value = null  // Clear victory state on cleanup
+    allowedWords.value = []
+    bannedWords.value = {}
   }
 
   function setPlayerInfo(name: string, token: string) {
@@ -211,6 +255,8 @@ export const useGameStore = defineStore('game', () => {
     roomState,
     notifications,
     victoryState,
+    allowedWords,
+    bannedWords,
     connect,
     sendMessage,
     leaveRoom,

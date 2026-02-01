@@ -160,7 +160,9 @@ impl RoomManager {
             room_state: room.lock().unwrap().get_censored_state_for(&"".to_string()),
             new_messages: vec![],
             notifications: vec![],
-            room_closed: false,            victory: None,        });
+            room_closed: false,
+            victory: None,
+        });
 
         eprintln!("Created room {}", &room_id);
 

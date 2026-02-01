@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use utoipa::ToSchema;
 
 use crate::room::ChatRoom;
 
@@ -14,7 +15,7 @@ pub const MAX_USER_ACTIONS: usize = 100;
 /// The replacement string used when censoring banned words.
 pub const CENSORSHIP_REPLACEMENT: &str = "***";
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct Message {
     pub id: MessageId,
     pub sender_id: UserId,
@@ -23,7 +24,7 @@ pub struct Message {
     pub timestamp: Timestamp,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct CensoredMessage {
     pub id: MessageId,
     pub sender_id: UserId,
@@ -31,7 +32,7 @@ pub struct CensoredMessage {
     pub was_censored: bool,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum UserAction {
     SendMessage(String),
@@ -40,26 +41,26 @@ pub enum UserAction {
     LeaveRoom,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct Participant {
     pub user_id: UserId,
     pub country: CountryCode,
     pub joined_at: Timestamp,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct RoomState {
     pub room_id: RoomId,
     pub participants: Vec<Participant>,
     pub recent_messages: Vec<CensoredMessage>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct Notification {
     pub message: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct PlayerProgress {
     pub user_id: UserId,
     pub country: CountryCode,
@@ -68,14 +69,14 @@ pub struct PlayerProgress {
     pub completed: bool,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct VictoryState {
     pub achieved: bool,
     pub player_progress: Vec<PlayerProgress>,
     pub unlocked_at: Option<Timestamp>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct RoomUpdate {
     pub room_state: RoomState,
     /// Raw messages that need to be censored per-user before sending to clients.
@@ -85,7 +86,7 @@ pub struct RoomUpdate {
     pub victory: Option<VictoryState>,
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, ToSchema)]
 pub struct FilterConfig {
     pub banned_words: HashMap<CountryCode, Vec<String>>,
 }
@@ -95,7 +96,7 @@ pub trait RoomConfig: Send + Sync {
     fn init_room(&self, room_id: RoomId) -> ChatRoom;
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, ToSchema)]
 pub struct RoomInfo {
     pub filter_config: FilterConfig,
 }
