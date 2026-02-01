@@ -1,9 +1,6 @@
-<<<<<<< HEAD
-use crate::data::{CountryCode, FilterConfig, CENSORSHIP_REPLACEMENT};
-=======
-use crate::data::{CENSORSHIP_REPLACEMENT, CountryCode, FilterConfig};
 use std::collections::HashMap;
->>>>>>> 8b87053 (refactor(backend): unify censorship logic and eliminate clippy warnings)
+
+use crate::data::{CENSORSHIP_REPLACEMENT, CountryCode, FilterConfig};
 
 pub struct CensorshipFilter {
     pub(crate) config: &'static FilterConfig,
