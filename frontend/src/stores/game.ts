@@ -18,15 +18,21 @@ export const useGameStore = defineStore('game', () => {
   const playerId = ref('')
   const playerName = ref('')
   const playerToken = ref('')
+  const currentRoomId = ref('')
   const roomState = ref<RoomUpdate['room_state'] | null>(null)
   const notifications = ref<string[]>([])
 
   // WebSocket instance (will be set in connect)
   let ws: ReturnType<typeof useWebSocket> | null = null
 
+  function generateRoomId() {
+    return Math.random().toString(36).substring(2, 10)
+  }
+
   function connect(roomId: string, token: string) {
     console.log('[WebSocket] connect() called', { roomId, token: token.substring(0, 10) + '...' })
     
+    currentRoomId.value = roomId
     if (ws) {
       console.warn('[WebSocket] Already initialized, close first')
       return
@@ -165,11 +171,6 @@ export const useGameStore = defineStore('game', () => {
     })
   }
 
-  async function ensureTestRoom(_token: string): Promise<void> {
-    // No need to check - backend will auto-create test_room on first connection
-    console.log('Test room will be auto-created on connection')
-  }
-
   function connectToTestRoom() {
     console.log('[Store] connectToTestRoom() called')
     console.log('[Store] Current playerToken:', playerToken.value)
@@ -180,8 +181,9 @@ export const useGameStore = defineStore('game', () => {
     }
     
     if (playerToken.value) {
-      console.log('[Store] Connecting to test room with token:', playerToken.value.substring(0, 10) + '...')
-      connect(TEST_ROOM_ID, playerToken.value)
+      const roomId = currentRoomId.value || TEST_ROOM_ID
+      console.log(`[Store] Connecting to room ${roomId} with token:`, playerToken.value.substring(0, 10) + '...')
+      connect(roomId, playerToken.value)
     } else {
       console.error('[Store] No player token available! Cannot connect.')
     }
@@ -194,6 +196,7 @@ export const useGameStore = defineStore('game', () => {
     playerId,
     playerName,
     playerToken,
+    currentRoomId,
     roomState,
     notifications,
     connect,
@@ -203,8 +206,8 @@ export const useGameStore = defineStore('game', () => {
     setPlayerInfo,
     loadPlayerInfo,
     createRoom,
-    ensureTestRoom,
     connectToTestRoom,
+    generateRoomId,
     login
   }
 })

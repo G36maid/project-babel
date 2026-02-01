@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useGameStore } from '@/stores/game'
 import TelegramLayout from '@/components/layout/TelegramLayout.vue'
 import Sidebar from '@/components/layout/Sidebar.vue'
@@ -9,6 +10,8 @@ import MessageList from '@/components/chat/MessageList.vue'
 import ChatInput from '@/components/chat/ChatInput.vue'
 import SymbolKeyboard from '@/components/symbols/SymbolKeyboard.vue'
 
+const route = useRoute()
+const router = useRouter()
 const gameStore = useGameStore()
 
 // Local state
@@ -28,8 +31,9 @@ const participants = computed(() => {
 })
 
 const roomName = computed(() => {
-  if (roomState.value) {
-    return `Test Room`
+  const roomId = route.params.roomId as string
+  if (roomId) {
+    return `Room: ${roomId}`
   }
   return 'Connecting...'
 })
@@ -47,8 +51,19 @@ function handleSymbolSelect(emoji: string) {
 
 // Connect on mount
 onMounted(() => {
+  const roomId = route.params.roomId as string
   gameStore.loadPlayerInfo()
-  gameStore.connectToTestRoom()
+  
+  if (roomId) {
+    gameStore.currentRoomId = roomId
+    
+    if (gameStore.playerToken) {
+      gameStore.connect(roomId, gameStore.playerToken)
+    } else {
+      console.warn('No token found, redirecting to login')
+      router.push({ name: 'home', query: { roomId } })
+    }
+  }
 })
 </script>
 

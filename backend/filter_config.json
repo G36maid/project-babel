@@ -1,8 +1,0 @@
-{
-  "banned_words": {
-    "A": ["freedom", "democracy"],
-    "B": ["local", "progress"],
-    "C": ["capital", "equality"]
-  },
-  "replacement": "***"
-}
