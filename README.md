@@ -10,7 +10,8 @@
 **Project Babel** 是一款多人合作的社會反烏托邦解謎遊戲。
 四名玩家身處不同的極權國家，面對各自的網路審查防火牆。為了傳遞真相，你們必須使用一套由 26 個原始符號組成的「未定義語言」，在充滿 `****` 與雜訊的聊天室中，拼湊出自由的拼圖。
 
-詳細設計文件請參閱：[Game Design Document](docs/docs.md)
+詳細設計文件請參閱：[Game Design Document](docs/game_design.md)
+開發紀錄請參閱：[Process Journal](docs/process_journal.md)
 
 ## 🎮 核心機制 (Mechanics)
 - **語言解謎 (Undefined Language):** 使用 26 個原創表意符號溝通。
@@ -36,24 +37,8 @@
 
 ## 🚀 快速開始 (Quick Start)
 
-### 前置需求 (Prerequisites)
-
-Choose one of the following setup methods:
-
-**Option 1: Docker (Recommended - Easiest)**
-- [Docker](https://docs.docker.com/get-docker/) (v20.10+)
-- [Docker Compose](https://docs.docker.com/compose/install/) (v2.0+)
-
-**Option 2: Local Development**
-- [Bun](https://bun.sh/) (v1.2+) - Fast JavaScript runtime & package manager
-  - *Alternative: [Node.js](https://nodejs.org/) v18+ with npm also works*
-- [Rust](https://www.rust-lang.org/) (Latest Stable)
-
----
-
-### 方法 1: Docker (Production-like) ⭐推薦
-
-最簡單的方式，一鍵啟動完整環境：
+### ⭐ 推薦方式：Docker Compose (最快、最穩定)
+這是開發者最推薦的執行方式，能確保後端 Rust 環境與前端 Vue 環境完全一致。
 
 ```bash
 # 1. Clone Repo
@@ -62,77 +47,40 @@ cd project-babel
 
 # 2. 啟動所有服務
 docker-compose up -d
-
-# 3. 確認服務狀態
-docker-compose ps
 ```
 
 **服務位置**:
-- Frontend: `http://localhost:8080`
-- Backend API: `http://localhost:3000`
-- API Documentation: `http://localhost:3000/swagger-ui/`
+- 前端介面: `http://localhost:8080`
+- 後端 API: `http://localhost:3000`
+- API 文檔: `http://localhost:3000/swagger-ui/`
 
-**常用指令**:
+**常用管理指令**:
 ```bash
-# 查看日誌
-docker-compose logs -f
-
-# 停止服務
-docker-compose down
-
-# 重新建置（更新程式碼後）
-docker-compose up -d --build
+docker-compose logs -f        # 查看即時日誌
+docker-compose down           # 停止並移除容器
+docker-compose up -d --build  # 更新程式碼後重新建置
 ```
 
 ---
 
-### 方法 2: Local Development (開發調試)
+### 其他方式 (開發調試)
 
-適合需要即時調試、熱重載的開發場景：
+#### 方法 2: Local Development (本機開發)
+適合需要進行程式碼熱重載 (Hot Reload) 的開發者。
 
-1. **Clone Repo**
-   ```bash
-   git clone https://github.com/G36maid/project-babel.git
-   cd project-babel
-   ```
+1. **安裝環境**:
+   - [Bun](https://bun.sh/) (前端推薦使用，速度快 4-6 倍)
+   - [Rust](https://www.rust-lang.org/) (後端)
 
-2. **安裝依賴** (Bun is ~4-6× faster)
-   ```bash
-   cd frontend
-   bun install
-   ```
-   
-   *Note: `npm install` also works if you prefer npm*
+2. **執行**:
+   - Terminal 1 (後端): `cd backend && cargo run`
+   - Terminal 2 (前端): `cd frontend && bun run dev`
 
-3. **啟動開發伺服器**
-
-   Terminal 1 - 啟動後端:
-   ```bash
-   cd backend && cargo run
-   ```
-
-   Terminal 2 - 啟動前端:
-   ```bash
-   cd frontend && bun run dev
-   ```
-
-   **服務位置**:
-   - Frontend: `http://localhost:5173`
-   - Backend: `http://localhost:3000`
-   - API Documentation: `http://localhost:3000/swagger-ui/`
-
----
-
-### 方法 3: Docker Development (Frontend Hot Reload)
-
-僅前端使用 Docker 開發（保留熱重載功能）：
-
+#### 方法 3: Hybrid Mode (混合模式)
+如果你只想修改前端，可以讓後端跑在 Docker：
 ```bash
-cd frontend
-
-# 開發模式（支援熱重載）
-docker build --target development -t babel-frontend-dev .
-docker run -p 5173:5173 -v $(pwd):/app babel-frontend-dev
+docker-compose up -d backend
+cd frontend && bun run dev
 ```
 
 
