@@ -54,6 +54,10 @@ pub struct ChatRoom {
     pub allowed: HashSet<String>,
     /// Player notes storing hypotheses about banned words per country.
     pub(crate) player_notes: HashMap<UserId, HashMap<CountryCode, Vec<String>>>,
+    /// Whether victory has been achieved (all players discovered all banned words).
+    victory_achieved: bool,
+    /// Timestamp when victory was achieved.
+    victory_timestamp: Option<Timestamp>,
 }
 
 impl ChatRoom {
@@ -83,6 +87,8 @@ impl ChatRoom {
             shadow_ban: true,
             allowed: HashSet::new(),
             player_notes: HashMap::new(),
+            victory_achieved: false,
+            victory_timestamp: None,
         }
     }
 
@@ -144,7 +150,7 @@ impl ChatRoom {
                 self.messages.push(message.clone());
                 (Some(message), notifications)
             }
-            UserAction::SendNote(note_map) => {
+            UserAction::SubmitNotes(note_map) => {
                 // Send note: players share their hypotheses about banned words
                 // Store the latest notes for this user
                 self.player_notes.insert(user_id.clone(), note_map.clone());
@@ -323,6 +329,86 @@ impl ChatRoom {
 
     pub fn get_player_note(&self, user_id: &UserId) -> Option<&HashMap<CountryCode, Vec<String>>> {
         self.player_notes.get(user_id)
+    }
+
+    /// Calculate player progress for all participants
+    pub fn get_player_progress(&self) -> Vec<crate::data::PlayerProgress> {
+        use crate::data::PlayerProgress;
+        
+        // Get countries of current participants
+        let active_countries: HashSet<String> = self.participants
+            .iter()
+            .map(|p| p.country.clone())
+            .collect();
+        
+        // Get only banned words for countries that are currently in the room
+        let all_banned_words: HashSet<String> = self.filter.config.banned_words
+            .iter()
+            .filter(|(country, _)| active_countries.contains(*country))
+            .flat_map(|(_, words)| words)
+            .map(|s| s.to_lowercase())
+            .collect();
+        
+        let total_required = all_banned_words.len();
+        
+        self.participants.iter().map(|participant| {
+            let discovered_count = if let Some(notes) = self.player_notes.get(&participant.user_id) {
+                // Collect all unique words from player's notes
+                let discovered: HashSet<String> = notes.values()
+                    .flatten()
+                    .map(|s| s.to_lowercase())
+                    .collect();
+                
+                // Count how many match actual banned words
+                discovered.intersection(&all_banned_words).count()
+            } else {
+                0
+            };
+            
+            PlayerProgress {
+                user_id: participant.user_id.clone(),
+                country: participant.country.clone(),
+                discovered_count,
+                total_required,
+                completed: discovered_count >= total_required,
+            }
+        }).collect()
+    }
+
+    /// Check if all players have discovered all banned words
+    pub fn check_victory(&mut self) -> bool {
+        if self.victory_achieved {
+            return true;
+        }
+        
+        // Need at least one player
+        if self.participants.is_empty() {
+            return false;
+        }
+        
+        let progress = self.get_player_progress();
+        
+        // All players must have completed
+        let all_completed = progress.iter().all(|p| p.completed);
+        
+        if all_completed {
+            self.victory_achieved = true;
+            self.victory_timestamp = Some(Self::current_timestamp());
+            debug!("Victory achieved in room {}", self.room_id);
+        }
+        
+        all_completed
+    }
+
+    /// Get current victory state
+    pub fn get_victory_state(&self) -> crate::data::VictoryState {
+        use crate::data::VictoryState;
+        
+        VictoryState {
+            achieved: self.victory_achieved,
+            player_progress: self.get_player_progress(),
+            unlocked_at: self.victory_timestamp,
+        }
     }
 }
 

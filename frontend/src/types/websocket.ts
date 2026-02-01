@@ -38,11 +38,26 @@ export interface Notification {
   message: string
 }
 
+export interface PlayerProgress {
+  user_id: UserId
+  country: CountryCode
+  discovered_count: number
+  total_required: number
+  completed: boolean
+}
+
+export interface VictoryState {
+  achieved: boolean
+  player_progress: PlayerProgress[]
+  unlocked_at: number | null
+}
+
 export interface RoomUpdate {
   room_state: RoomState
   new_messages: CensoredMessage[]
   notifications: Notification[]
   room_closed: boolean
+  victory: VictoryState | null
 }
 
 // UserAction - matches backend UserAction enum (snake_case)

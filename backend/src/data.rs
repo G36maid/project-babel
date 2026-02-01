@@ -36,7 +36,7 @@ pub struct CensoredMessage {
 pub enum UserAction {
     SendMessage(String),
     SendMessageArray(Vec<String>),
-    SendNote(HashMap<CountryCode, Vec<String>>),
+    SubmitNotes(HashMap<CountryCode, Vec<String>>),
     LeaveRoom,
 }
 
@@ -60,12 +60,29 @@ pub struct Notification {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PlayerProgress {
+    pub user_id: UserId,
+    pub country: CountryCode,
+    pub discovered_count: usize,
+    pub total_required: usize,
+    pub completed: bool,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct VictoryState {
+    pub achieved: bool,
+    pub player_progress: Vec<PlayerProgress>,
+    pub unlocked_at: Option<Timestamp>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RoomUpdate {
     pub room_state: RoomState,
     /// Raw messages that need to be censored per-user before sending to clients.
     pub new_messages: Vec<Message>,
     pub notifications: Vec<Notification>,
     pub room_closed: bool,
+    pub victory: Option<VictoryState>,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]

@@ -21,6 +21,7 @@ export const useGameStore = defineStore('game', () => {
   const currentRoomId = ref('')
   const roomState = ref<RoomUpdate['room_state'] | null>(null)
   const notifications = ref<string[]>([])
+  const victoryState = ref<RoomUpdate['victory'] | null>(null)
 
   // WebSocket instance (will be set in connect)
   let ws: ReturnType<typeof useWebSocket> | null = null
@@ -76,6 +77,14 @@ export const useGameStore = defineStore('game', () => {
           roomState.value = data.room_state
           messages.value.push(...data.new_messages)
           notifications.value.push(...data.notifications.map(n => n.message))
+
+          // Check for victory
+          if (data.victory) {
+            victoryState.value = data.victory
+            if (data.victory.achieved) {
+              console.log('[WebSocket] 🎉 VICTORY ACHIEVED!')
+            }
+          }
 
           if (data.room_closed) {
             console.log('[WebSocket] Room closed by server')
@@ -199,6 +208,7 @@ export const useGameStore = defineStore('game', () => {
     currentRoomId,
     roomState,
     notifications,
+    victoryState,
     connect,
     sendMessage,
     leaveRoom,

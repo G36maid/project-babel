@@ -9,6 +9,7 @@ import ChatHeader from '@/components/chat/ChatHeader.vue'
 import MessageList from '@/components/chat/MessageList.vue'
 import ChatInput from '@/components/chat/ChatInput.vue'
 import SymbolKeyboard from '@/components/symbols/SymbolKeyboard.vue'
+import NotebookPanel from '@/components/chat/NotebookPanel.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -16,6 +17,7 @@ const gameStore = useGameStore()
 
 // Local state
 const showSymbolKeyboard = ref(false)
+const showNotebook = ref(false)
 const inputText = ref('')
 const mobileSidebarOpen = ref(false)
 
@@ -25,6 +27,7 @@ const roomState = computed(() => gameStore.roomState)
 const connectionState = computed(() => gameStore.connectionState)
 const playerId = computed(() => gameStore.playerId)
 const playerName = computed(() => gameStore.playerName)
+const victoryState = computed(() => gameStore.victoryState)
 
 const participants = computed(() => {
   return roomState.value?.participants || []
@@ -74,10 +77,22 @@ onMounted(() => {
   >
     <!-- Sidebar Slot -->
     <template #sidebar>
-      <Sidebar 
-        :room-name="roomName"
-        :participants="participants"
-      />
+      <div class="h-full flex flex-col">
+        <!-- Participant List (top half) -->
+        <div class="flex-1 overflow-y-auto">
+          <Sidebar 
+            :room-name="roomName"
+            :participants="participants"
+          />
+        </div>
+        
+        <!-- Notebook Panel (bottom half) -->
+        <div class="flex-1 border-t border-gray-700 overflow-y-auto">
+          <div class="p-2">
+            <NotebookPanel />
+          </div>
+        </div>
+      </div>
     </template>
     
     <!-- Chat Slot -->
@@ -94,6 +109,36 @@ onMounted(() => {
         
         <!-- Messages -->
         <template #messages>
+          <!-- Victory Screen -->
+          <div v-if="victoryState?.achieved" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50">
+            <div class="bg-gray-800 rounded-lg p-8 max-w-2xl w-full mx-4 shadow-2xl border border-green-500">
+              <h2 class="text-3xl font-bold text-green-400 mb-4 text-center">🎉 Victory Achieved!</h2>
+              <p class="text-gray-300 text-center mb-6">All countries have discovered all banned words!</p>
+              
+              <div class="space-y-3">
+                <h3 class="text-lg font-semibold text-gray-200 mb-2">Player Progress:</h3>
+                <div v-for="progress in victoryState.player_progress" :key="progress.user_id" 
+                     class="bg-gray-700 rounded p-3 flex justify-between items-center">
+                  <div>
+                    <span class="font-semibold text-blue-400">Country {{ progress.country }}</span>
+                    <span class="text-gray-400 ml-2">({{ progress.user_id }})</span>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <span class="text-gray-300">{{ progress.discovered_count }} / {{ progress.total_required }} words</span>
+                    <span v-if="progress.completed" class="text-green-400 font-bold">✓</span>
+                  </div>
+                </div>
+              </div>
+              
+              <button 
+                @click="router.push({ name: 'home' })"
+                class="mt-6 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition"
+              >
+                Return to Home
+              </button>
+            </div>
+          </div>
+          
           <MessageList
             :messages="messages"
             :current-player-id="playerId"
