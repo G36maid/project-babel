@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useWebSocket } from '@vueuse/core'
 import { apiClient, getWebSocketUrl } from '@/api/client'
-import type { RoomUpdate, UserAction, ConnectionState, CensoredMessage } from '@/types/websocket'
+import type { RoomUpdate, UserAction, ConnectionState, CensoredMessage, RoomWordsInfo } from '@/types/websocket'
 
 interface LoginResponse {
   token: string
@@ -18,15 +18,39 @@ export const useGameStore = defineStore('game', () => {
   const playerId = ref('')
   const playerName = ref('')
   const playerToken = ref('')
+  const currentRoomId = ref('')
   const roomState = ref<RoomUpdate['room_state'] | null>(null)
   const notifications = ref<string[]>([])
+  const allowedWords = ref<string[]>([])
+  const bannedWords = ref<Record<string, string[]>>({})
 
   // WebSocket instance (will be set in connect)
   let ws: ReturnType<typeof useWebSocket> | null = null
 
+  function generateRoomId() {
+    return Math.random().toString(36).substring(2, 10)
+  }
+
+  async function fetchRoomWordsInfo(roomId: string) {
+    try {
+      const data = await apiClient.get<RoomWordsInfo>(`/rooms/${roomId}/info`)
+      allowedWords.value = data.allowed_words
+      bannedWords.value = data.banned_words
+      console.log('[Store] Fetched room words:', { 
+        allowedCount: data.allowed_words.length,
+        bannedCountries: Object.keys(data.banned_words).length
+      })
+    } catch (err) {
+      console.error('[Store] Failed to fetch room words info:', err)
+      allowedWords.value = []
+      bannedWords.value = {}
+    }
+  }
+
   function connect(roomId: string, token: string) {
     console.log('[WebSocket] connect() called', { roomId, token: token.substring(0, 10) + '...' })
     
+    currentRoomId.value = roomId
     if (ws) {
       console.warn('[WebSocket] Already initialized, close first')
       return
@@ -34,6 +58,8 @@ export const useGameStore = defineStore('game', () => {
 
     connectionState.value = 'connecting'
     console.log('[WebSocket] State: connecting')
+
+    fetchRoomWordsInfo(roomId)
 
     // Determine WebSocket URL using VITE_BACKEND_URL if configured
     const wsUrl = getWebSocketUrl(roomId, token)
@@ -118,6 +144,8 @@ export const useGameStore = defineStore('game', () => {
     messages.value = []
     roomState.value = null
     notifications.value = []
+    allowedWords.value = []
+    bannedWords.value = {}
   }
 
   function setPlayerInfo(name: string, token: string) {
@@ -165,11 +193,6 @@ export const useGameStore = defineStore('game', () => {
     })
   }
 
-  async function ensureTestRoom(_token: string): Promise<void> {
-    // No need to check - backend will auto-create test_room on first connection
-    console.log('Test room will be auto-created on connection')
-  }
-
   function connectToTestRoom() {
     console.log('[Store] connectToTestRoom() called')
     console.log('[Store] Current playerToken:', playerToken.value)
@@ -180,8 +203,9 @@ export const useGameStore = defineStore('game', () => {
     }
     
     if (playerToken.value) {
-      console.log('[Store] Connecting to test room with token:', playerToken.value.substring(0, 10) + '...')
-      connect(TEST_ROOM_ID, playerToken.value)
+      const roomId = currentRoomId.value || TEST_ROOM_ID
+      console.log(`[Store] Connecting to room ${roomId} with token:`, playerToken.value.substring(0, 10) + '...')
+      connect(roomId, playerToken.value)
     } else {
       console.error('[Store] No player token available! Cannot connect.')
     }
@@ -194,8 +218,11 @@ export const useGameStore = defineStore('game', () => {
     playerId,
     playerName,
     playerToken,
+    currentRoomId,
     roomState,
     notifications,
+    allowedWords,
+    bannedWords,
     connect,
     sendMessage,
     leaveRoom,
@@ -203,8 +230,8 @@ export const useGameStore = defineStore('game', () => {
     setPlayerInfo,
     loadPlayerInfo,
     createRoom,
-    ensureTestRoom,
     connectToTestRoom,
+    generateRoomId,
     login
   }
 })

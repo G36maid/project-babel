@@ -1,28 +1,35 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useGameStore } from '@/stores/game'
+import { COUNTRIES } from '@/types/websocket'
 
 const router = useRouter()
+const route = useRoute()
 const gameStore = useGameStore()
 
 const playerName = ref('')
+const roomId = ref(gameStore.generateRoomId())
 const selectedCountry = ref('A')
 const isJoining = ref(false)
 const errorMessage = ref('')
 
-const countries = [
-  { value: 'A', label: 'Country A' },
-  { value: 'B', label: 'Country B' },
-  { value: 'C', label: 'Country C' },
-  { value: 'D', label: 'Country D' },
-  { value: 'CN', label: 'China' },
-  { value: 'US', label: 'United States' },
-]
+onMounted(() => {
+  if (route.query.roomId) {
+    roomId.value = route.query.roomId as string
+  }
+})
+
+const countries = COUNTRIES
 
 async function joinGame() {
   if (!playerName.value.trim()) {
     errorMessage.value = 'Please enter your name'
+    return
+  }
+
+  if (!roomId.value.trim()) {
+    errorMessage.value = 'Please enter a room ID'
     return
   }
 
@@ -33,11 +40,11 @@ async function joinGame() {
     // Perform login
     const token = await gameStore.login(playerName.value.trim(), selectedCountry.value)
     
-    // Ensure test room exists (if needed, though connection creates it)
-    await gameStore.ensureTestRoom(token)
+    // Set the room ID in the store
+    gameStore.currentRoomId = roomId.value.trim()
     
     // Navigate to game
-    router.push('/game')
+    router.push(`/game/${gameStore.currentRoomId}`)
   } catch (error) {
     errorMessage.value = 'Failed to join room. Please try again.'
     console.error('Join error:', error)
@@ -75,6 +82,29 @@ async function joinGame() {
           />
         </div>
 
+        <!-- Room ID Input -->
+        <div class="mb-4">
+          <label class="mb-2 block text-sm font-medium text-gray-300">
+            Room ID
+          </label>
+          <div class="flex gap-2">
+            <input
+              v-model="roomId"
+              type="text"
+              placeholder="Enter room ID..."
+              class="w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-3 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              @keydown.enter="joinGame"
+            />
+            <button 
+              @click="roomId = gameStore.generateRoomId()"
+              class="px-4 py-2 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-lg text-gray-300 transition-colors"
+              title="Generate random ID"
+            >
+              🔄
+            </button>
+          </div>
+        </div>
+
         <!-- Token Selection -->
         <div class="mb-6">
           <label class="mb-2 block text-sm font-medium text-gray-300">
@@ -110,7 +140,7 @@ async function joinGame() {
         <p class="mb-2"><strong class="text-gray-300">How to play:</strong></p>
         <ul class="list-disc list-inside space-y-1">
           <li>Enter your name and select a country</li>
-          <li>All players join the same test room</li>
+          <li>Share the <strong class="text-gray-300">Room ID</strong> with friends to play together</li>
           <li>Use symbols (0-25) to communicate</li>
           <li>Discover which words are censored in each country</li>
         </ul>

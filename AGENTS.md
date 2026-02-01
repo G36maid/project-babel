@@ -22,6 +22,7 @@
 **Service URLs**:
 - Frontend: `http://localhost:8080` (Nginx production build)
 - Backend: `http://localhost:3000` (Rust Axum)
+- API Documentation: `http://localhost:3000/swagger-ui/`
 
 **Network**: Services communicate via `babel-network` bridge (defined in docker-compose.yml)
 
@@ -30,7 +31,7 @@
 ### Frontend (Vue 3 + TypeScript) - Local Dev
 **Working Directory**: `frontend/`
 
-| Action | Bun (Primary) | npm (Alternative) | Docker Dev | Description |
+| Action | Bun (Preferred) | npm (Fallback) | Docker Dev | Description |
 |--------|---------------|-------------------|------------|-------------|
 | Install | `bun install` | `npm install` | - | Install dependencies |
 | Dev | `bun run dev` | `npm run dev` | `docker build --target development -t babel-dev . && docker run -p 5173:5173 -v $(pwd):/app babel-dev` | Vite dev server on `localhost:5173` |
@@ -39,7 +40,7 @@
 | Type Check | `bunx vue-tsc -b` | `npx vue-tsc -b` | - | TypeScript compiler only |
 
 **Lockfile**: `bun.lock` (text format, git-diffable)  
-**Why Bun?** ~4-6× faster than npm. Both work since they share `package.json`.
+**Why Bun?** Project uses Bun as the primary tool because it is ~4-6× faster than npm. If `bun` is not available on your system, you can fallback to `npm`.
 
 ---
 
@@ -152,7 +153,8 @@ use crate::filter::CensorshipFilter;
 
 **Key Patterns**:
 - Types: Type aliases for IDs (`RoomId = String`)
-- State: `AppState` with `Arc<RoomManager>`
+- State: `AppState` with `Arc<RoomManager>`; `RoomConnector` shares `Arc<Mutex<ChatRoom>>`
+- Censorship: Dynamic rules loaded from `words.json` via `words.rs`
 - Async: `tokio::select!` for concurrent operations
 - Serialization: `serde` with `rename_all = "snake_case"`
 
@@ -215,22 +217,32 @@ project-babel/
 │   │   ├── server.rs      # HTTP/WebSocket routes
 │   │   ├── room.rs        # Chat room logic
 │   │   ├── manager.rs     # Room lifecycle management
-│   │   ├── filter.rs      # Censorship filter + tests
+│   │   ├── filter.rs      # Censorship filter logic
+│   │   ├── words.rs       # Word list loading & generation
 │   │   ├── data.rs        # Types and structs
 │   │   └── utils.rs       # File I/O helpers
 │   ├── Cargo.toml
-│   └── filter_config.json # Censorship rules
+│   └── words.json         # Word lists (normal & censored)
 ├── frontend/              # Vue 3 frontend
 │   ├── src/
-│   │   ├── views/         # Page components
-│   │   ├── stores/        # Pinia stores
+│   │   ├── api/           # HTTP client
+│   │   ├── components/    # Vue components
+│   │   ├── composables/   # Vue composables
 │   │   ├── router/        # Vue Router config
+│   │   ├── stores/        # Pinia stores
+│   │   ├── styles/        # Global styles
+│   │   ├── types/         # TypeScript definitions
+│   │   ├── views/         # Page components
 │   │   ├── App.vue
-│   │   └── main.ts
+│   │   ├── main.ts
+│   │   └── style.css
 │   ├── bun.lock           # Bun lockfile (text format)
 │   ├── package.json
 │   └── vite.config.ts
+├── docs/                  # Documentation
 ├── Cargo.toml             # Workspace root
+├── flake.nix              # Nix development environment
+├── flake.lock
 └── README.md
 ```
 
@@ -265,8 +277,8 @@ Before starting work, determine which development mode to use:
 
 ### General Guidelines
 
-1. **Docker First**: When in doubt, use `docker-compose up -d` for consistent environments
-2. **Frontend Changes**: Can work in container (`docker-compose up -d`) OR local (`cd frontend && bun run dev`)
+1. **Docker First**: When in doubt, use `docker-compose up -d for consistent environments
+2. **Frontend Changes**: Prefer `bun` for frontend tasks (install, build, dev, lint, etc.). If `bun` is not found, fallback to `npm`. Work in container (`docker-compose up -d`) OR local (`cd frontend && bun run dev`)
 3. **Backend Changes**: Can hot-reload with `docker-compose up -d` (rebuild on change) OR local `cargo run`
 4. **Type Safety**: Run `bunx vue-tsc -b` after TS changes; `cargo check` after Rust changes
 5. **Testing**: Describe manual verification steps since test coverage is minimal

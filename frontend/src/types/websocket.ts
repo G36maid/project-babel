@@ -6,6 +6,22 @@ export type MessageId = number
 export type CountryCode = string
 export type Timestamp = number
 
+export const COUNTRY_NAMES: Record<string, string> = {
+  'A': 'Alveria',
+  'B': 'Brezna',
+  'C': 'Corvistan',
+  'D': 'Dravia'
+}
+
+export const COUNTRIES = Object.entries(COUNTRY_NAMES).map(([code, name]) => ({
+  value: code as CountryCode,
+  label: name
+}))
+
+export function getCountryName(code: string): string {
+  return COUNTRY_NAMES[code] || code
+}
+
 export interface Message {
   id: MessageId
   sender_id: UserId
@@ -52,3 +68,9 @@ export type UserAction =
 
 // Connection states
 export type ConnectionState = 'idle' | 'connecting' | 'connected' | 'disconnected' | 'error'
+
+// Room words info - from /api/rooms/{id}/info
+export interface RoomWordsInfo {
+  allowed_words: string[]
+  banned_words: Record<string, string[]>
+}
