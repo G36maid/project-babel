@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useGameStore } from '@/stores/game'
+import { COUNTRIES } from '@/types/websocket'
 
 const router = useRouter()
 const route = useRoute()
@@ -19,14 +20,7 @@ onMounted(() => {
   }
 })
 
-const countries = [
-  { value: 'A', label: 'Country A' },
-  { value: 'B', label: 'Country B' },
-  { value: 'C', label: 'Country C' },
-  { value: 'D', label: 'Country D' },
-  { value: 'CN', label: 'China' },
-  { value: 'US', label: 'United States' },
-]
+const countries = COUNTRIES
 
 async function joinGame() {
   if (!playerName.value.trim()) {
