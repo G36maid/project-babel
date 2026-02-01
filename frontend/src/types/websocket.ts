@@ -7,10 +7,10 @@ export type CountryCode = string
 export type Timestamp = number
 
 export const COUNTRY_NAMES: Record<string, string> = {
-  'A': 'Veridia',
-  'B': 'Aethelgard',
-  'C': 'Orynthia',
-  'D': 'Kaelis'
+  'A': 'Alveria',
+  'B': 'Brezna',
+  'C': 'Corvistan',
+  'D': 'Dravia'
 }
 
 export const COUNTRIES = Object.entries(COUNTRY_NAMES).map(([code, name]) => ({
