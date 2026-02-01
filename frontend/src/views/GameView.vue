@@ -52,6 +52,11 @@ function handleSymbolSelect(emoji: string) {
   inputText.value += emoji
 }
 
+function returnToHome() {
+  gameStore.cleanup()
+  router.push({ name: 'home' })
+}
+
 // Connect on mount
 onMounted(() => {
   const roomId = route.params.roomId as string
@@ -131,7 +136,7 @@ onMounted(() => {
               </div>
               
               <button 
-                @click="router.push({ name: 'home' })"
+                @click="returnToHome"
                 class="mt-6 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition"
               >
                 Return to Home
