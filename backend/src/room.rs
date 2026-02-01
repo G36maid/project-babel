@@ -77,7 +77,7 @@ impl ChatRoom {
                 .insert(country.clone(), banned.clone());
         }
         let config_ref: &'static FilterConfig = Box::leak(Box::new(config_owned));
-        
+
         // Create initial game instructions message
         let game_instructions = Message {
             id: 1,
@@ -86,7 +86,7 @@ impl ChatRoom {
             content: GAME_INSTRUCTIONS.to_string(),
             timestamp: Self::current_timestamp(),
         };
-        
+
         Self {
             room_id,
             config: config_ref,
@@ -95,9 +95,9 @@ impl ChatRoom {
             message_counter: 1,
             filter: CensorshipFilter::new(config_ref),
             allowed_words,
-            sender_censor: false,
+            sender_censor: true,
             receiver_censor: true,
-            shadow_ban: true,
+            shadow_ban: false,
             allowed: HashSet::new(),
             player_notes: HashMap::new(),
             victory_achieved: false,
@@ -372,45 +372,51 @@ impl ChatRoom {
     /// Calculate player progress for all participants
     pub fn get_player_progress(&self) -> Vec<crate::data::PlayerProgress> {
         use crate::data::PlayerProgress;
-        
+
         // Get countries of current participants
-        let active_countries: HashSet<String> = self.participants
+        let active_countries: HashSet<String> = self
+            .participants
             .iter()
             .map(|p| p.country.clone())
             .collect();
-        
+
         // Get only banned words for countries that are currently in the room
-        let all_banned_words: HashSet<String> = self.filter.config.banned_words
+        let all_banned_words: HashSet<String> = self
+            .filter
+            .config
+            .banned_words
             .iter()
             .filter(|(country, _)| active_countries.contains(*country))
             .flat_map(|(_, words)| words)
             .map(|s| s.to_lowercase())
             .collect();
-        
+
         let total_required = all_banned_words.len();
-        
-        self.participants.iter().map(|participant| {
-            let discovered_count = if let Some(notes) = self.player_notes.get(&participant.user_id) {
-                // Collect all unique words from player's notes
-                let discovered: HashSet<String> = notes.values()
-                    .flatten()
-                    .map(|s| s.to_lowercase())
-                    .collect();
-                
-                // Count how many match actual banned words
-                discovered.intersection(&all_banned_words).count()
-            } else {
-                0
-            };
-            
-            PlayerProgress {
-                user_id: participant.user_id.clone(),
-                country: participant.country.clone(),
-                discovered_count,
-                total_required,
-                completed: discovered_count >= total_required,
-            }
-        }).collect()
+
+        self.participants
+            .iter()
+            .map(|participant| {
+                let discovered_count =
+                    if let Some(notes) = self.player_notes.get(&participant.user_id) {
+                        // Collect all unique words from player's notes
+                        let discovered: HashSet<String> =
+                            notes.values().flatten().map(|s| s.to_lowercase()).collect();
+
+                        // Count how many match actual banned words
+                        discovered.intersection(&all_banned_words).count()
+                    } else {
+                        0
+                    };
+
+                PlayerProgress {
+                    user_id: participant.user_id.clone(),
+                    country: participant.country.clone(),
+                    discovered_count,
+                    total_required,
+                    completed: discovered_count >= total_required,
+                }
+            })
+            .collect()
     }
 
     /// Check if all players have discovered all banned words
@@ -418,30 +424,30 @@ impl ChatRoom {
         if self.victory_achieved {
             return true;
         }
-        
+
         // Need at least one player
         if self.participants.is_empty() {
             return false;
         }
-        
+
         let progress = self.get_player_progress();
-        
+
         // All players must have completed
         let all_completed = progress.iter().all(|p| p.completed);
-        
+
         if all_completed {
             self.victory_achieved = true;
             self.victory_timestamp = Some(Self::current_timestamp());
             debug!("Victory achieved in room {}", self.room_id);
         }
-        
+
         all_completed
     }
 
     /// Get current victory state
     pub fn get_victory_state(&self) -> crate::data::VictoryState {
         use crate::data::VictoryState;
-        
+
         VictoryState {
             achieved: self.victory_achieved,
             player_progress: self.get_player_progress(),
