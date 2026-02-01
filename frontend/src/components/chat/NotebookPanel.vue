@@ -1,170 +1,169 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
-import { useGameStore } from '@/stores/game'
-import { apiClient } from '@/api/client'
+import { computed, onMounted, ref, watch } from "vue";
+import { apiClient } from "@/api/client";
+import { useGameStore } from "@/stores/game";
 
-const gameStore = useGameStore()
+const gameStore = useGameStore();
 
 // Dynamic word counts per country (only for countries with players)
-const wordCounts = ref<Record<string, number>>({})
+const wordCounts = ref<Record<string, number>>({});
 
 // State for each country's guesses (dynamic based on actual banned word count)
-const notes = ref<Record<string, string[]>>({})
+const notes = ref<Record<string, string[]>>({});
 
-const loading = ref(true)
-const submitting = ref(false)
+const loading = ref(true);
+const submitting = ref(false);
 const submitResult = ref<{
-  success: boolean
-  discovered_count: number
-  total_required: number
-  victory_achieved: boolean
-} | null>(null)
+  success: boolean;
+  discovered_count: number;
+  total_required: number;
+  victory_achieved: boolean;
+} | null>(null);
 
 // Get countries that have active players
 const activeCountries = computed(() => {
-  if (!gameStore.roomState?.participants) return []
-  return [...new Set(gameStore.roomState.participants.map(p => p.country))].sort()
-})
+  if (!gameStore.roomState?.participants) return [];
+  return [
+    ...new Set(gameStore.roomState.participants.map((p) => p.country)),
+  ].sort();
+});
 
 const canSubmit = computed(() => {
   // Check if all fields for active countries are filled
-  return activeCountries.value.every(country => {
-    const countryNotes = notes.value[country]
-    return countryNotes && countryNotes.every(note => note.trim().length > 0)
-  })
-})
+  return activeCountries.value.every((country) => {
+    const countryNotes = notes.value[country];
+    return countryNotes && countryNotes.every((note) => note.trim().length > 0);
+  });
+});
 
-const totalWords = computed(() => 
-  Object.values(wordCounts.value).reduce((sum, count) => sum + count, 0)
-)
+const totalWords = computed(() =>
+  Object.values(wordCounts.value).reduce((sum, count) => sum + count, 0),
+);
 
 // Fetch room info to get actual banned word counts
 async function fetchRoomInfo() {
   try {
-    loading.value = true
-    
+    loading.value = true;
+
     // Wait a bit for room to be created if needed
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
     const response: any = await apiClient.get(
-      `/rooms/${gameStore.currentRoomId}/info`
-    )
-    
-    console.log('[Notebook] Room info received:', response)
-    
+      `/rooms/${gameStore.currentRoomId}/info`,
+    );
+
+    console.log("[Notebook] Room info received:", response);
+
     // Update word counts based on actual banned words
-    const bannedWords = response.banned_words as Record<string, string[]>
-    const newNotes: Record<string, string[]> = {}
-    const newCounts: Record<string, number> = {}
-    
+    const bannedWords = response.banned_words as Record<string, string[]>;
+    const newNotes: Record<string, string[]> = {};
+    const newCounts: Record<string, number> = {};
+
     // Only initialize notes for countries with active players
     for (const country of activeCountries.value) {
       if (bannedWords[country]) {
-        const count = bannedWords[country].length
-        newCounts[country] = count
-        newNotes[country] = Array(count).fill('')
-        console.log(`[Notebook] Country ${country}: ${count} words`)
+        const count = bannedWords[country].length;
+        newCounts[country] = count;
+        newNotes[country] = Array(count).fill("");
+        console.log(`[Notebook] Country ${country}: ${count} words`);
       }
     }
-    
-    wordCounts.value = newCounts
-    notes.value = newNotes
-    console.log('[Notebook] Updated wordCounts:', newCounts)
+
+    wordCounts.value = newCounts;
+    notes.value = newNotes;
+    console.log("[Notebook] Updated wordCounts:", newCounts);
   } catch (error: any) {
-    console.error('Failed to fetch room info:', error)
+    console.error("Failed to fetch room info:", error);
     // If 404, room might not exist yet - retry once
     if (error.status === 404) {
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       try {
         const response: any = await apiClient.get(
-          `/rooms/${gameStore.currentRoomId}/info`
-        )
-        const bannedWords = response.banned_words as Record<string, string[]>
-        const newNotes: Record<string, string[]> = {}
-        const newCounts: Record<string, number> = {}
+          `/rooms/${gameStore.currentRoomId}/info`,
+        );
+        const bannedWords = response.banned_words as Record<string, string[]>;
+        const newNotes: Record<string, string[]> = {};
+        const newCounts: Record<string, number> = {};
         for (const country of activeCountries.value) {
           if (bannedWords[country]) {
-            newCounts[country] = bannedWords[country].length
-            newNotes[country] = Array(bannedWords[country].length).fill('')
+            newCounts[country] = bannedWords[country].length;
+            newNotes[country] = Array(bannedWords[country].length).fill("");
           }
         }
-        wordCounts.value = newCounts
-        notes.value = newNotes
+        wordCounts.value = newCounts;
+        notes.value = newNotes;
       } catch (retryError) {
-        console.error('Retry failed:', retryError)
+        console.error("Retry failed:", retryError);
       }
     }
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
 // Watch for participant changes and update notes accordingly
 watch(activeCountries, (newCountries, oldCountries) => {
-  if (JSON.stringify(newCountries) === JSON.stringify(oldCountries)) return
-  
-  console.log('[Notebook] Active countries changed:', newCountries)
-  
+  if (JSON.stringify(newCountries) === JSON.stringify(oldCountries)) return;
+
+  console.log("[Notebook] Active countries changed:", newCountries);
+
   // Refetch room info when participants change
   if (gameStore.currentRoomId && newCountries.length > 0) {
-    fetchRoomInfo()
+    fetchRoomInfo();
   }
-})
+});
 
 onMounted(() => {
-  console.log('[Notebook] onMounted, currentRoomId:', gameStore.currentRoomId)
+  console.log("[Notebook] onMounted, currentRoomId:", gameStore.currentRoomId);
   if (gameStore.currentRoomId) {
-    fetchRoomInfo()
+    fetchRoomInfo();
   } else {
-    loading.value = false
+    loading.value = false;
   }
-})
+});
 
 async function submitNotes() {
   if (!canSubmit.value) {
-    alert('Please fill in all fields')
-    return
+    alert("Please fill in all fields");
+    return;
   }
 
-  submitting.value = true
-  submitResult.value = null
+  submitting.value = true;
+  submitResult.value = null;
 
   try {
     const payload = {
       notes: Object.fromEntries(
         Object.entries(notes.value)
           .filter(([country]) => activeCountries.value.includes(country))
-          .map(([country, words]) => [
-          country,
-          words.map(w => w.trim())
-        ])
-      )
-    }
+          .map(([country, words]) => [country, words.map((w) => w.trim())]),
+      ),
+    };
 
     const response: any = await apiClient.post(
       `/rooms/${gameStore.currentRoomId}/submit_notes`,
       payload,
       {
-        'X-User-Token': gameStore.playerToken
-      }
-    )
+        "X-User-Token": gameStore.playerToken,
+      },
+    );
 
-    submitResult.value = response
+    submitResult.value = response;
   } catch (error) {
-    console.error('Failed to submit notes:', error)
-    alert('Failed to submit notes. Please try again.')
+    console.error("Failed to submit notes:", error);
+    alert("Failed to submit notes. Please try again.");
   } finally {
-    submitting.value = false
+    submitting.value = false;
   }
 }
 
 function clearNotes() {
-  const cleared: Record<string, string[]> = {}
+  const cleared: Record<string, string[]> = {};
   for (const [country, count] of Object.entries(wordCounts.value)) {
-    cleared[country] = Array(count).fill('')
+    cleared[country] = Array(count).fill("");
   }
-  notes.value = cleared
-  submitResult.value = null
+  notes.value = cleared;
+  submitResult.value = null;
 }
 </script>
 

@@ -4,9 +4,11 @@ async fn solve_room_with_note(
     Path(room_id): Path<RoomId>,
     headers: HeaderMap,
 ) -> Result<Json<SolveResponse>, StatusCode> {
-    let _user = extract_user_from_headers(&headers, &state.tokens_map)
-        .ok_or(StatusCode::FORBIDDEN)?;
-    let connector = state.room_manager.connect_to_room(&room_id)
+    let _user =
+        extract_user_from_headers(&headers, &state.tokens_map).ok_or(StatusCode::FORBIDDEN)?;
+    let connector = state
+        .room_manager
+        .connect_to_room(&room_id)
         .ok_or(StatusCode::NOT_FOUND)?;
     let mut room = connector.room.lock().unwrap();
     // 所有玩家的 player note 都要答對才算勝利
@@ -21,7 +23,9 @@ async fn solve_room_with_note(
     if all_correct {
         room.win();
     }
-    Ok(Json(SolveResponse { solved: all_correct }))
+    Ok(Json(SolveResponse {
+        solved: all_correct,
+    }))
 }
 // Helper for answer checking and success action, used by both solve_room and solve_room_with_note
 fn solve_answer(room: &mut crate::room::ChatRoom, answer: HashMap<String, Vec<String>>) -> bool {
@@ -48,9 +52,7 @@ use std::collections::HashMap;
 use utoipa::{OpenApi, ToSchema};
 use utoipa_swagger_ui::SwaggerUi;
 
-#[derive(Deserialize)]
-
-#[derive(Serialize, ToSchema)]
+#[derive(Deserialize, Serialize, ToSchema)]
 struct SolveResponse {
     solved: bool,
 }
@@ -96,9 +98,11 @@ async fn solve_room(
     headers: HeaderMap, // 新增
     AxumJson(payload): AxumJson<SolveRequest>,
 ) -> Result<Json<SolveResponse>, StatusCode> {
-    let _user = extract_user_from_headers(&headers, &state.tokens_map)
-        .ok_or(StatusCode::FORBIDDEN)?;
-    let connector = state.room_manager.connect_to_room(&room_id)
+    let _user =
+        extract_user_from_headers(&headers, &state.tokens_map).ok_or(StatusCode::FORBIDDEN)?;
+    let connector = state
+        .room_manager
+        .connect_to_room(&room_id)
         .ok_or(StatusCode::NOT_FOUND)?;
     let mut room = connector.room.lock().unwrap();
     let result = solve_answer(&mut room, payload.answer);
@@ -115,62 +119,70 @@ async fn submit_notes(
     headers: HeaderMap,
     AxumJson(payload): AxumJson<SubmitNotesRequest>,
 ) -> Result<Json<SubmitNotesResponse>, StatusCode> {
-    let user = extract_user_from_headers(&headers, &state.tokens_map)
-        .ok_or(StatusCode::FORBIDDEN)?;
-    
-    let connector = state.room_manager.connect_to_room(&room_id)
+    let user =
+        extract_user_from_headers(&headers, &state.tokens_map).ok_or(StatusCode::FORBIDDEN)?;
+
+    let connector = state
+        .room_manager
+        .connect_to_room(&room_id)
         .ok_or(StatusCode::NOT_FOUND)?;
-    
+
     let mut room = connector.room.lock().unwrap();
-    
+
     // Update player's notes
-    room.player_notes.insert(user.user_id.clone(), payload.notes);
-    
+    room.player_notes
+        .insert(user.user_id.clone(), payload.notes);
+
     eprintln!("[SubmitNotes] User {} submitted notes", user.user_id);
-    
+
     // Calculate progress for this specific user
     let all_progress = room.get_player_progress();
-    let user_progress = all_progress.iter()
-        .find(|p| p.user_id == user.user_id);
-    
+    let user_progress = all_progress.iter().find(|p| p.user_id == user.user_id);
+
     let discovered_count = user_progress.map(|p| p.discovered_count).unwrap_or(0);
-    let total_required = room.filter.config.banned_words.values()
+    let total_required = room
+        .filter
+        .config
+        .banned_words
+        .values()
         .map(|words| words.len())
         .sum();
-    
-    eprintln!("[SubmitNotes] Progress: {} discovered {} / {} words", 
-              user.user_id, discovered_count, total_required);
-    
+
+    eprintln!(
+        "[SubmitNotes] Progress: {} discovered {} / {} words",
+        user.user_id, discovered_count, total_required
+    );
+
     // Check victory
     let victory_achieved = room.check_victory();
-    
+
     eprintln!("[SubmitNotes] Victory check result: {}", victory_achieved);
     eprintln!("[SubmitNotes] All progress: {:?}", all_progress);
-    
+
     // If victory achieved, broadcast update
     if victory_achieved {
         eprintln!("[SubmitNotes] Broadcasting victory state!");
         // Create and send victory update
         let victory_state = room.get_victory_state();
         let room_state = room.get_censored_state_for(&"".to_string());
-        
+
         drop(room); // Release lock before sending
-        
+
         let update = RoomUpdate {
             room_state,
             new_messages: vec![],
             notifications: vec![Notification {
-                message: "🎉 Victory! All players discovered all banned words!".to_string()
+                message: "🎉 Victory! All players discovered all banned words!".to_string(),
             }],
             room_closed: false,
             victory: Some(victory_state),
         };
-        
+
         connector.update_sender.send_replace(update);
     } else {
         drop(room); // Release lock
     }
-    
+
     Ok(Json(SubmitNotesResponse {
         success: true,
         discovered_count,
@@ -267,7 +279,7 @@ fn censor_message_for_country(
             was_censored: false,
         };
     }
-    
+
     // Shadow ban: sender sees their own message uncensored
     if shadow_ban && &message.sender_country == viewer_country {
         return CensoredMessage {
@@ -282,6 +294,7 @@ fn censor_message_for_country(
     let mut was_censored = false;
 
     // Apply sender's country filter (sender_censor mode)
+    #[allow(clippy::collapsible_if)]
     if sender_censor {
         if let Some(words) = banned_words.get(&message.sender_country) {
             for word in words {
@@ -304,6 +317,7 @@ fn censor_message_for_country(
     }
 
     // Apply receiver's country filter (receiver_censor mode)
+    #[allow(clippy::collapsible_if)]
     if receiver_censor {
         if let Some(words) = banned_words.get(viewer_country) {
             for word in words {
@@ -605,6 +619,7 @@ async fn handle_participant_socket(
                             "Sending censored update to client"
                         );
 
+                        #[allow(clippy::collapsible_if)]
                         if let Ok(json) = to_string(&client_update) {
                             if ws_sender.send(WsMessage::Text(json.into())).await.is_err() {
                                 debug!(room_id, user_id, "Failed to send update, closing connection");
@@ -648,6 +663,7 @@ async fn handle_spectator_socket(socket: WebSocket, connector: RoomConnector, ro
     debug!(room_id, "Spectator WebSocket established");
 
     while let Some(update) = update_stream.next().await {
+        #[allow(clippy::collapsible_if)]
         if let Ok(json) = to_string(&update) {
             if ws_sender.send(WsMessage::Text(json.into())).await.is_err() {
                 debug!(room_id, "Spectator disconnected");
@@ -673,13 +689,23 @@ async fn handle_spectator_socket(socket: WebSocket, connector: RoomConnector, ro
     ),
     components(
         schemas(
-            LoginRequest, LoginResponse, RoomInfo, RoomId, 
-            RoomWordsInfo, SolveRequest, SolveResponse,
-            ClientRoomUpdate, ConnectQuery,
-            crate::data::FilterConfig, crate::data::Message, 
-            crate::data::CensoredMessage, crate::data::UserAction, 
-            crate::data::Participant, crate::data::RoomState, 
-            crate::data::Notification, crate::data::RoomUpdate
+            LoginRequest,
+            LoginResponse,
+            RoomInfo,
+            RoomId,
+            RoomWordsInfo,
+            SolveRequest,
+            SolveResponse,
+            ClientRoomUpdate,
+            ConnectQuery,
+            crate::data::FilterConfig,
+            crate::data::Message,
+            crate::data::CensoredMessage,
+            crate::data::UserAction,
+            crate::data::Participant,
+            crate::data::RoomState,
+            crate::data::Notification,
+            crate::data::RoomUpdate
         )
     ),
     tags(
@@ -721,7 +747,10 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/rooms/{id}/spectate", get(spectate_room))
         .route("/api/rooms/{id}/info", get(get_room_words_info))
         .route("/api/rooms/{id}/solve", post(solve_room))
-        .route("/api/rooms/{id}/solve_with_note", post(solve_room_with_note))
+        .route(
+            "/api/rooms/{id}/solve_with_note",
+            post(solve_room_with_note),
+        )
         .route("/api/rooms/{id}/submit_notes", post(submit_notes))
         .route("/api/login", post(login))
         .layer(TraceLayer::new_for_http())
@@ -747,9 +776,9 @@ mod tests {
     fn test_censor_message_receiver_only() {
         let mut banned_words = HashMap::new();
         banned_words.insert("B".to_string(), vec!["bad".to_string()]);
-        
+
         let msg = make_test_message("hello bad world", "A");
-        
+
         // Receiver B has "bad" banned
         let censored = censor_message_for_country(
             &msg,
@@ -759,7 +788,7 @@ mod tests {
             true,  // receiver_censor
             false, // shadow_ban
         );
-        
+
         assert!(censored.was_censored);
         assert_eq!(censored.content, "hello *** world");
     }
@@ -768,9 +797,9 @@ mod tests {
     fn test_censor_message_sender_only() {
         let mut banned_words = HashMap::new();
         banned_words.insert("A".to_string(), vec!["bad".to_string()]);
-        
+
         let msg = make_test_message("hello bad world", "A");
-        
+
         // Receiver B doesn't have "bad" banned, but Sender A does
         let censored = censor_message_for_country(
             &msg,
@@ -780,7 +809,7 @@ mod tests {
             false, // receiver_censor
             false, // shadow_ban
         );
-        
+
         assert!(censored.was_censored);
         assert_eq!(censored.content, "hello *** world");
     }
@@ -789,9 +818,9 @@ mod tests {
     fn test_shadow_ban() {
         let mut banned_words = HashMap::new();
         banned_words.insert("A".to_string(), vec!["bad".to_string()]);
-        
+
         let msg = make_test_message("hello bad world", "A");
-        
+
         // Viewer is Sender (A). Word is banned in A.
         // Without shadow ban, it would be censored.
         let censored = censor_message_for_country(
@@ -802,7 +831,7 @@ mod tests {
             true,  // receiver_censor
             true,  // shadow_ban
         );
-        
+
         assert!(!censored.was_censored);
         assert_eq!(censored.content, "hello bad world");
     }
@@ -811,9 +840,9 @@ mod tests {
     fn test_sender_censorship_disabled() {
         let mut banned_words = HashMap::new();
         banned_words.insert("A".to_string(), vec!["bad".to_string()]);
-        
+
         let msg = make_test_message("hello bad world", "A");
-        
+
         // Sender A has "bad" banned, but sender_censor is false
         let censored = censor_message_for_country(
             &msg,
@@ -823,7 +852,7 @@ mod tests {
             false, // receiver_censor
             false, // shadow_ban
         );
-        
+
         assert!(!censored.was_censored);
         assert_eq!(censored.content, "hello bad world");
     }

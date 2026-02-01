@@ -1,246 +1,266 @@
-import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import { useWebSocket } from '@vueuse/core'
-import { apiClient, getWebSocketUrl } from '@/api/client'
-import type { RoomUpdate, UserAction, ConnectionState, CensoredMessage, RoomWordsInfo } from '@/types/websocket'
+import { useWebSocket } from "@vueuse/core";
+import { defineStore } from "pinia";
+import { ref } from "vue";
+import { apiClient, getWebSocketUrl } from "@/api/client";
+import type {
+  CensoredMessage,
+  ConnectionState,
+  RoomUpdate,
+  RoomWordsInfo,
+  UserAction,
+} from "@/types/websocket";
 
 interface LoginResponse {
-  token: string
+  token: string;
 }
 
-const TEST_ROOM_ID = 'test_room'
+const TEST_ROOM_ID = "test_room";
 
-export const useGameStore = defineStore('game', () => {
+export const useGameStore = defineStore("game", () => {
   // State
-  const connected = ref(false)
-  const connectionState = ref<ConnectionState>('idle')
-  const messages = ref<CensoredMessage[]>([])
-  const playerId = ref('')
-  const playerName = ref('')
-  const playerToken = ref('')
-  const currentRoomId = ref('')
-  const roomState = ref<RoomUpdate['room_state'] | null>(null)
-  const notifications = ref<string[]>([])
-  const allowedWords = ref<string[]>([])
-  const bannedWords = ref<Record<string, string[]>>({})
-  const victoryState = ref<RoomUpdate['victory'] | null>(null)
+  const connected = ref(false);
+  const connectionState = ref<ConnectionState>("idle");
+  const messages = ref<CensoredMessage[]>([]);
+  const playerId = ref("");
+  const playerName = ref("");
+  const playerToken = ref("");
+  const currentRoomId = ref("");
+  const roomState = ref<RoomUpdate["room_state"] | null>(null);
+  const notifications = ref<string[]>([]);
+  const allowedWords = ref<string[]>([]);
+  const bannedWords = ref<Record<string, string[]>>({});
+  const victoryState = ref<RoomUpdate["victory"] | null>(null);
 
   // WebSocket instance (will be set in connect)
-  let ws: ReturnType<typeof useWebSocket> | null = null
+  let ws: ReturnType<typeof useWebSocket> | null = null;
 
   function generateRoomId() {
-    return Math.random().toString(36).substring(2, 10)
+    return Math.random().toString(36).substring(2, 10);
   }
 
   async function fetchRoomWordsInfo(roomId: string) {
     try {
-      const data = await apiClient.get<RoomWordsInfo>(`/rooms/${roomId}/info`)
-      allowedWords.value = data.allowed_words
-      bannedWords.value = data.banned_words
-      console.log('[Store] Fetched room words:', { 
+      const data = await apiClient.get<RoomWordsInfo>(`/rooms/${roomId}/info`);
+      allowedWords.value = data.allowed_words;
+      bannedWords.value = data.banned_words;
+      console.log("[Store] Fetched room words:", {
         allowedCount: data.allowed_words.length,
-        bannedCountries: Object.keys(data.banned_words).length
-      })
+        bannedCountries: Object.keys(data.banned_words).length,
+      });
     } catch (err) {
-      console.error('[Store] Failed to fetch room words info:', err)
-      allowedWords.value = []
-      bannedWords.value = {}
+      console.error("[Store] Failed to fetch room words info:", err);
+      allowedWords.value = [];
+      bannedWords.value = {};
     }
   }
 
   function connect(roomId: string, token: string) {
-    console.log('[WebSocket] connect() called', { roomId, token: token.substring(0, 10) + '...' })
-    
-    currentRoomId.value = roomId
+    console.log("[WebSocket] connect() called", {
+      roomId,
+      token: token.substring(0, 10) + "...",
+    });
+
+    currentRoomId.value = roomId;
     if (ws) {
-      console.warn('[WebSocket] Already initialized, close first')
-      return
+      console.warn("[WebSocket] Already initialized, close first");
+      return;
     }
 
-    connectionState.value = 'connecting'
-    console.log('[WebSocket] State: connecting')
+    connectionState.value = "connecting";
+    console.log("[WebSocket] State: connecting");
 
-    fetchRoomWordsInfo(roomId)
+    fetchRoomWordsInfo(roomId);
 
     // Determine WebSocket URL using VITE_BACKEND_URL if configured
-    const wsUrl = getWebSocketUrl(roomId, token)
-    console.log('[WebSocket] Connecting to:', wsUrl)
+    const wsUrl = getWebSocketUrl(roomId, token);
+    console.log("[WebSocket] Connecting to:", wsUrl);
 
     ws = useWebSocket(wsUrl, {
       autoReconnect: {
         retries: 3,
         delay: 1000,
         onFailed() {
-          console.error('[WebSocket] Auto-reconnect failed after 3 retries')
-          connectionState.value = 'error'
-        }
+          console.error("[WebSocket] Auto-reconnect failed after 3 retries");
+          connectionState.value = "error";
+        },
       },
       onConnected() {
-        console.log('[WebSocket] ✅ Connected successfully!')
-        connected.value = true
-        connectionState.value = 'connected'
+        console.log("[WebSocket] ✅ Connected successfully!");
+        connected.value = true;
+        connectionState.value = "connected";
       },
       onDisconnected() {
-        console.log('[WebSocket] ❌ Disconnected')
-        connected.value = false
-        connectionState.value = 'disconnected'
+        console.log("[WebSocket] ❌ Disconnected");
+        connected.value = false;
+        connectionState.value = "disconnected";
       },
       onError(_ws, event) {
-        console.error('[WebSocket] ❌ Error:', event)
-        connectionState.value = 'error'
+        console.error("[WebSocket] ❌ Error:", event);
+        connectionState.value = "error";
       },
       onMessage(_ws, event) {
-        console.log('[WebSocket] 📨 Received message:', event.data)
+        console.log("[WebSocket] 📨 Received message:", event.data);
         try {
-          const data = JSON.parse(event.data) as RoomUpdate
-          console.log('[WebSocket] Parsed data:', data)
-          roomState.value = data.room_state
-          
+          const data = JSON.parse(event.data) as RoomUpdate;
+          console.log("[WebSocket] Parsed data:", data);
+          roomState.value = data.room_state;
+
           // Initialize messages from room state if this is the first update
-          if (messages.value.length === 0 && data.room_state.recent_messages.length > 0) {
-            messages.value = [...data.room_state.recent_messages]
+          if (
+            messages.value.length === 0 &&
+            data.room_state.recent_messages.length > 0
+          ) {
+            messages.value = [...data.room_state.recent_messages];
           }
-          
+
           // Add new messages
-          messages.value.push(...data.new_messages)
-          
+          messages.value.push(...data.new_messages);
+
           // Convert notifications to system messages
           if (data.notifications && data.notifications.length > 0) {
             // Generate IDs based on the last message ID to avoid collisions
-            const lastMessageId = messages.value.length > 0 
-              ? Math.max(...messages.value.map(m => m.id))
-              : 0
-            
-            const notificationMessages: CensoredMessage[] = data.notifications.map((n, index) => ({
-              id: lastMessageId + index + 1,
-              sender_id: 'SYSTEM',
-              content: n.message,
-              was_censored: false
-            }))
-            messages.value.push(...notificationMessages)
+            const lastMessageId =
+              messages.value.length > 0
+                ? Math.max(...messages.value.map((m) => m.id))
+                : 0;
+
+            const notificationMessages: CensoredMessage[] =
+              data.notifications.map((n, index) => ({
+                id: lastMessageId + index + 1,
+                sender_id: "SYSTEM",
+                content: n.message,
+                was_censored: false,
+              }));
+            messages.value.push(...notificationMessages);
           }
 
           // Check for victory
           if (data.victory) {
-            victoryState.value = data.victory
+            victoryState.value = data.victory;
             if (data.victory.achieved) {
-              console.log('[WebSocket] 🎉 VICTORY ACHIEVED!')
+              console.log("[WebSocket] 🎉 VICTORY ACHIEVED!");
             }
           }
 
           if (data.room_closed) {
-            console.log('[WebSocket] Room closed by server')
-            connectionState.value = 'disconnected'
+            console.log("[WebSocket] Room closed by server");
+            connectionState.value = "disconnected";
           }
         } catch (err) {
-          console.error('[WebSocket] Failed to parse message:', err)
+          console.error("[WebSocket] Failed to parse message:", err);
         }
-      }
-    })
-    
-    console.log('[WebSocket] WebSocket instance created')
+      },
+    });
+
+    console.log("[WebSocket] WebSocket instance created");
   }
 
   function sendMessage(content: string) {
     if (!ws || !ws.send) {
-      console.error('[Store] WebSocket not connected')
-      return
+      console.error("[Store] WebSocket not connected");
+      return;
     }
 
-    console.log('[Store] Sending message:', content)
-    const action: UserAction = { send_message: content }
-    const payload = JSON.stringify(action)
-    console.log('[Store] Payload:', payload)
-    ws.send(payload)
+    console.log("[Store] Sending message:", content);
+    const action: UserAction = { send_message: content };
+    const payload = JSON.stringify(action);
+    console.log("[Store] Payload:", payload);
+    ws.send(payload);
   }
 
   function leaveRoom() {
-    if (!ws || !ws.send) return
+    if (!ws || !ws.send) return;
 
-    const action: UserAction = { leave_room: null }
-    ws.send(JSON.stringify(action))
-    ws.close()
-    ws = null
-    connected.value = false
-    connectionState.value = 'idle'
-    victoryState.value = null  // Clear victory state when leaving
+    const action: UserAction = { leave_room: null };
+    ws.send(JSON.stringify(action));
+    ws.close();
+    ws = null;
+    connected.value = false;
+    connectionState.value = "idle";
+    victoryState.value = null; // Clear victory state when leaving
   }
 
   function cleanup() {
     if (ws) {
-      ws.close()
-      ws = null
+      ws.close();
+      ws = null;
     }
-    connected.value = false
-    connectionState.value = 'idle'
-    messages.value = []
-    roomState.value = null
-    notifications.value = []
-    allowedWords.value = []
-    bannedWords.value = {}
-    victoryState.value = null  // Clear victory state on cleanup
+    connected.value = false;
+    connectionState.value = "idle";
+    messages.value = [];
+    roomState.value = null;
+    notifications.value = [];
+    allowedWords.value = [];
+    bannedWords.value = {};
+    victoryState.value = null; // Clear victory state on cleanup
   }
 
   function setPlayerInfo(name: string, token: string) {
-    playerName.value = name
-    playerToken.value = token
-    playerId.value = name
+    playerName.value = name;
+    playerToken.value = token;
+    playerId.value = name;
     // Store in localStorage for persistence
-    localStorage.setItem('babel_player_name', name)
-    localStorage.setItem('babel_player_token', token)
+    localStorage.setItem("babel_player_name", name);
+    localStorage.setItem("babel_player_token", token);
   }
 
   async function login(username: string, country: string): Promise<string> {
     try {
-      const data = await apiClient.post<LoginResponse>('/login', { username, country })
+      const data = await apiClient.post<LoginResponse>("/login", {
+        username,
+        country,
+      });
 
       // Update local state
-      playerName.value = username
-      playerToken.value = data.token
-      playerId.value = username
+      playerName.value = username;
+      playerToken.value = data.token;
+      playerId.value = username;
 
       // Persist
-      localStorage.setItem('babel_player_name', username)
-      localStorage.setItem('babel_player_token', data.token)
+      localStorage.setItem("babel_player_name", username);
+      localStorage.setItem("babel_player_token", data.token);
 
-      return data.token
+      return data.token;
     } catch (err) {
-      console.error('[Store] Login error:', err)
-      throw err
+      console.error("[Store] Login error:", err);
+      throw err;
     }
   }
 
   function loadPlayerInfo() {
-    const savedName = localStorage.getItem('babel_player_name')
-    const savedToken = localStorage.getItem('babel_player_token')
+    const savedName = localStorage.getItem("babel_player_name");
+    const savedToken = localStorage.getItem("babel_player_token");
     if (savedName && savedToken) {
-      playerName.value = savedName
-      playerToken.value = savedToken
-      playerId.value = savedName
+      playerName.value = savedName;
+      playerToken.value = savedToken;
+      playerId.value = savedName;
     }
   }
 
   async function createRoom(token: string): Promise<string> {
-    return await apiClient.post<string>('/rooms', undefined, {
-      'X-User-Token': token
-    })
+    return await apiClient.post<string>("/rooms", undefined, {
+      "X-User-Token": token,
+    });
   }
 
   function connectToTestRoom() {
-    console.log('[Store] connectToTestRoom() called')
-    console.log('[Store] Current playerToken:', playerToken.value)
-    
+    console.log("[Store] connectToTestRoom() called");
+    console.log("[Store] Current playerToken:", playerToken.value);
+
     if (!playerToken.value) {
-      console.log('[Store] No token, loading from localStorage...')
-      loadPlayerInfo()
+      console.log("[Store] No token, loading from localStorage...");
+      loadPlayerInfo();
     }
-    
+
     if (playerToken.value) {
-      const roomId = currentRoomId.value || TEST_ROOM_ID
-      console.log(`[Store] Connecting to room ${roomId} with token:`, playerToken.value.substring(0, 10) + '...')
-      connect(roomId, playerToken.value)
+      const roomId = currentRoomId.value || TEST_ROOM_ID;
+      console.log(
+        `[Store] Connecting to room ${roomId} with token:`,
+        playerToken.value.substring(0, 10) + "...",
+      );
+      connect(roomId, playerToken.value);
     } else {
-      console.error('[Store] No player token available! Cannot connect.')
+      console.error("[Store] No player token available! Cannot connect.");
     }
   }
 
@@ -266,6 +286,6 @@ export const useGameStore = defineStore('game', () => {
     createRoom,
     connectToTestRoom,
     generateRoomId,
-    login
-  }
-})
+    login,
+  };
+});

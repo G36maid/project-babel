@@ -1,25 +1,25 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { CensoredMessage } from '@/types/websocket'
-import SymbolRenderer from '@/components/symbols/SymbolRenderer.vue'
+import { computed } from "vue";
+import SymbolRenderer from "@/components/symbols/SymbolRenderer.vue";
+import type { CensoredMessage } from "@/types/websocket";
 
 const props = defineProps<{
-  message: CensoredMessage
-  isOwn: boolean
-  playerCountry?: string
-  playerName?: string
-}>()
+  message: CensoredMessage;
+  isOwn: boolean;
+  playerCountry?: string;
+  playerName?: string;
+}>();
 
 function formatTime(timestamp: number | undefined): string {
-  if (!timestamp || timestamp <= 0) return ''
-  const date = new Date(timestamp * 1000)
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  if (!timestamp || timestamp <= 0) return "";
+  const date = new Date(timestamp * 1000);
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
 // Parse message content into word tokens
 const tokens = computed(() => {
-  return props.message.content.split(' ')
-})
+  return props.message.content.split(" ");
+});
 </script>
 
 <template>

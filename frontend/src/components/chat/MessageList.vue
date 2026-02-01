@@ -1,39 +1,43 @@
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue'
-import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
-import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
-import type { CensoredMessage, Participant } from '@/types/websocket'
-import { getCountryName } from '@/types/websocket'
-import MessageBubble from './MessageBubble.vue'
+import { nextTick, ref, watch } from "vue";
+import { DynamicScroller, DynamicScrollerItem } from "vue-virtual-scroller";
+import "vue-virtual-scroller/dist/vue-virtual-scroller.css";
+import type { CensoredMessage, Participant } from "@/types/websocket";
+import { getCountryName } from "@/types/websocket";
+import MessageBubble from "./MessageBubble.vue";
 
 const props = defineProps<{
-  messages: CensoredMessage[]
-  currentPlayerId: string
-  participants: Participant[]
-}>()
+  messages: CensoredMessage[];
+  currentPlayerId: string;
+  participants: Participant[];
+}>();
 
-const scroller = ref<any>(null)
+const scroller = ref<any>(null);
 
 function isOwnMessage(message: CensoredMessage): boolean {
-  return message.sender_id === props.currentPlayerId
+  return message.sender_id === props.currentPlayerId;
 }
 
 function isSystemMessage(message: CensoredMessage): boolean {
-  return message.sender_id === 'SYSTEM'
+  return message.sender_id === "SYSTEM";
 }
 
 function getPlayerCountry(senderId: string): string {
-  const participant = props.participants.find(p => p.user_id === senderId)
-  return participant ? getCountryName(participant.country) : 'Unknown'
+  const participant = props.participants.find((p) => p.user_id === senderId);
+  return participant ? getCountryName(participant.country) : "Unknown";
 }
 
 // Auto-scroll to bottom on new messages
-watch(() => props.messages.length, async () => {
-  await nextTick()
-  if (scroller.value && scroller.value.scrollToBottom) {
-    scroller.value.scrollToBottom()
-  }
-}, { flush: 'post' })
+watch(
+  () => props.messages.length,
+  async () => {
+    await nextTick();
+    if (scroller.value && scroller.value.scrollToBottom) {
+      scroller.value.scrollToBottom();
+    }
+  },
+  { flush: "post" },
+);
 </script>
 
 <template>

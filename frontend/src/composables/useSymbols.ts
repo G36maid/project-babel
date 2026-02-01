@@ -1,12 +1,12 @@
-import { ref, readonly } from 'vue'
-import symbolsData from '@/assets/symbols.json'
+import { readonly, ref } from "vue";
+import symbolsData from "@/assets/symbols.json";
 
 export interface SymbolConfig {
-  svg: string
-  emoji: string
+  svg: string;
+  emoji: string;
 }
 
-const symbols = ref<Record<string, SymbolConfig>>(symbolsData)
+const symbols = ref<Record<string, SymbolConfig>>(symbolsData);
 
 /**
  * Composable to manage symbol lookups
@@ -19,7 +19,7 @@ export function useSymbols() {
    * @returns Symbol config or undefined if not found
    */
   function getSymbol(word: string): SymbolConfig | undefined {
-    return symbols.value[word]
+    return symbols.value[word];
   }
 
   /**
@@ -27,12 +27,12 @@ export function useSymbols() {
    * @returns Record of all symbol configurations
    */
   function getAllSymbols(): Record<string, SymbolConfig> {
-    return symbols.value
+    return symbols.value;
   }
 
   return {
     getSymbol,
     getAllSymbols,
     symbols: readonly(symbols),
-  }
+  };
 }

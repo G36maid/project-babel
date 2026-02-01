@@ -1,78 +1,78 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { useGameStore } from '@/stores/game'
-import TelegramLayout from '@/components/layout/TelegramLayout.vue'
-import Sidebar from '@/components/layout/Sidebar.vue'
-import ChatArea from '@/components/layout/ChatArea.vue'
-import ChatHeader from '@/components/chat/ChatHeader.vue'
-import MessageList from '@/components/chat/MessageList.vue'
-import ChatInput from '@/components/chat/ChatInput.vue'
-import SymbolKeyboard from '@/components/symbols/SymbolKeyboard.vue'
-import NotebookPanel from '@/components/chat/NotebookPanel.vue'
+import { computed, onMounted, ref } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import ChatHeader from "@/components/chat/ChatHeader.vue";
+import ChatInput from "@/components/chat/ChatInput.vue";
+import MessageList from "@/components/chat/MessageList.vue";
+import NotebookPanel from "@/components/chat/NotebookPanel.vue";
+import ChatArea from "@/components/layout/ChatArea.vue";
+import Sidebar from "@/components/layout/Sidebar.vue";
+import TelegramLayout from "@/components/layout/TelegramLayout.vue";
+import SymbolKeyboard from "@/components/symbols/SymbolKeyboard.vue";
+import { useGameStore } from "@/stores/game";
 
-const route = useRoute()
-const router = useRouter()
-const gameStore = useGameStore()
+const route = useRoute();
+const router = useRouter();
+const gameStore = useGameStore();
 
 // Local state
-const showSymbolKeyboard = ref(false)
-const showNotebook = ref(false)
-const inputText = ref('')
-const mobileSidebarOpen = ref(false)
+const showSymbolKeyboard = ref(false);
+const showNotebook = ref(false);
+const inputText = ref("");
+const mobileSidebarOpen = ref(false);
 
 // Computed
-const messages = computed(() => gameStore.messages)
-const roomState = computed(() => gameStore.roomState)
-const connectionState = computed(() => gameStore.connectionState)
-const playerId = computed(() => gameStore.playerId)
-const playerName = computed(() => gameStore.playerName)
-const victoryState = computed(() => gameStore.victoryState)
+const messages = computed(() => gameStore.messages);
+const roomState = computed(() => gameStore.roomState);
+const connectionState = computed(() => gameStore.connectionState);
+const playerId = computed(() => gameStore.playerId);
+const playerName = computed(() => gameStore.playerName);
+const victoryState = computed(() => gameStore.victoryState);
 
 const participants = computed(() => {
-  return roomState.value?.participants || []
-})
+  return roomState.value?.participants || [];
+});
 
 const roomName = computed(() => {
-  const roomId = route.params.roomId as string
+  const roomId = route.params.roomId as string;
   if (roomId) {
-    return `Room: ${roomId}`
+    return `Room: ${roomId}`;
   }
-  return 'Connecting...'
-})
+  return "Connecting...";
+});
 
 // Actions
 function handleSend(content: string) {
   if (content.trim()) {
-    gameStore.sendMessage(content.trim())
+    gameStore.sendMessage(content.trim());
   }
 }
 
 function handleSymbolSelect(emoji: string) {
-  inputText.value += emoji + ' '
+  inputText.value += emoji + " ";
 }
 
 function returnToHome() {
-  gameStore.cleanup()
-  router.push({ name: 'home' })
+  gameStore.cleanup();
+  router.push({ name: "home" });
 }
 
 // Connect on mount
 onMounted(() => {
-  const roomId = route.params.roomId as string
-  gameStore.loadPlayerInfo()
-  
+  const roomId = route.params.roomId as string;
+  gameStore.loadPlayerInfo();
+
   if (roomId) {
-    gameStore.currentRoomId = roomId
-    
+    gameStore.currentRoomId = roomId;
+
     if (gameStore.playerToken) {
-      gameStore.connect(roomId, gameStore.playerToken)
+      gameStore.connect(roomId, gameStore.playerToken);
     } else {
-      console.warn('No token found, redirecting to login')
-      router.push({ name: 'home', query: { roomId } })
+      console.warn("No token found, redirecting to login");
+      router.push({ name: "home", query: { roomId } });
     }
   }
-})
+});
 </script>
 
 <template>

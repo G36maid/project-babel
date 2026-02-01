@@ -106,9 +106,9 @@ impl ChatRoom {
     }
 
     pub fn win(&mut self) {
-        let msg = format!("[SYSTEM] Censorship puzzle is finished!");
+        let msg = "[SYSTEM] Censorship puzzle is finished!".to_string();
         self.message_counter += 1;
-        self.messages.push(crate::data::Message {
+        self.messages.push(Message {
             id: self.message_counter,
             sender_id: "SYSTEM".to_string(),
             sender_country: "".to_string(),
@@ -485,7 +485,7 @@ mod tests {
         );
         note_map.insert("B".to_string(), vec!["monarchy".to_string()]);
 
-        let action = UserAction::SendNote(note_map.clone());
+        let action = UserAction::SubmitNotes(note_map.clone());
         let (message, notifications) = room.process_action(&user_id, &country, action);
 
         // Should not create a message
@@ -515,7 +515,7 @@ mod tests {
 
         // Send an empty note
         let note_map = HashMap::new();
-        let action = UserAction::SendNote(note_map);
+        let action = UserAction::SubmitNotes(note_map);
         let (message, notifications) = room.process_action(&user_id, &country, action);
 
         // Should not create a message
@@ -548,7 +548,7 @@ mod tests {
             ],
         );
 
-        let action = UserAction::SendNote(note_map);
+        let action = UserAction::SubmitNotes(note_map);
         let (message, notifications) = room.process_action(&user_id, &country, action);
 
         assert!(message.is_none());
@@ -571,7 +571,7 @@ mod tests {
         let mut note_map = HashMap::new();
         note_map.insert("A".to_string(), vec!["freedom".to_string()]);
 
-        let action = UserAction::SendNote(note_map);
+        let action = UserAction::SubmitNotes(note_map);
         let (message, notifications) = room.process_action(&user_id, &country, action);
 
         assert!(message.is_none());
@@ -593,7 +593,7 @@ mod tests {
         // Send first note
         let mut note_map1 = HashMap::new();
         note_map1.insert("A".to_string(), vec!["freedom".to_string()]);
-        let action1 = UserAction::SendNote(note_map1.clone());
+        let action1 = UserAction::SubmitNotes(note_map1.clone());
         room.process_action(&user_id, &country, action1);
 
         // Verify first note is stored
@@ -605,7 +605,7 @@ mod tests {
             "B".to_string(),
             vec!["monarchy".to_string(), "tradition".to_string()],
         );
-        let action2 = UserAction::SendNote(note_map2.clone());
+        let action2 = UserAction::SubmitNotes(note_map2.clone());
         room.process_action(&user_id, &country, action2);
 
         // Verify only latest note is stored
@@ -623,7 +623,7 @@ mod tests {
     /// - Country "B" has "monarchy" banned
     fn make_censorship_test_room() -> ChatRoom {
         let config = make_test_config();
-        let room = ChatRoom {
+        ChatRoom {
             room_id: "test_room".to_string(),
             config,
             participants: Vec::new(),
@@ -641,8 +641,9 @@ mod tests {
             shadow_ban: true,
             allowed: HashSet::new(),
             player_notes: HashMap::new(),
-        };
-        room
+            victory_achieved: false,
+            victory_timestamp: None,
+        }
     }
 
     #[test]

@@ -1,11 +1,11 @@
 <script setup lang="ts">
 const props = defineProps<{
-  sidebarOpen?: boolean
-}>()
+  sidebarOpen?: boolean;
+}>();
 
 const emit = defineEmits<{
-  'close-sidebar': []
-}>()
+  "close-sidebar": [];
+}>();
 </script>
 
 <template>

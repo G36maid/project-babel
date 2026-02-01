@@ -1,26 +1,29 @@
 <script setup lang="ts">
-import type { ConnectionState } from '@/types/websocket'
-import { useTheme } from '@/composables/useTheme'
-import { computed } from 'vue'
+import { computed } from "vue";
+import { useTheme } from "@/composables/useTheme";
+import type { ConnectionState } from "@/types/websocket";
 
 const props = defineProps<{
-  roomName?: string
-  connectionState: ConnectionState
-}>()
+  roomName?: string;
+  connectionState: ConnectionState;
+}>();
 
 defineEmits<{
-  'openSidebar': []
-}>()
+  openSidebar: [];
+}>();
 
-const { isDark, toggleTheme } = useTheme()
+const { isDark, toggleTheme } = useTheme();
 
-const connectionColor = computed(() => ({
-  'idle': 'bg-gray-500',
-  'connecting': 'bg-yellow-500',
-  'connected': 'bg-green-500',
-  'disconnected': 'bg-red-500',
-  'error': 'bg-red-600'
-}[props.connectionState]))
+const connectionColor = computed(
+  () =>
+    ({
+      idle: "bg-gray-500",
+      connecting: "bg-yellow-500",
+      connected: "bg-green-500",
+      disconnected: "bg-red-500",
+      error: "bg-red-600",
+    })[props.connectionState],
+);
 </script>
 
 <template>

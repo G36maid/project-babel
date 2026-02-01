@@ -1,55 +1,58 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import { useGameStore } from '@/stores/game'
-import { COUNTRIES } from '@/types/websocket'
+import { onMounted, ref } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { useGameStore } from "@/stores/game";
+import { COUNTRIES } from "@/types/websocket";
 
-const router = useRouter()
-const route = useRoute()
-const gameStore = useGameStore()
+const router = useRouter();
+const route = useRoute();
+const gameStore = useGameStore();
 
-const playerName = ref('')
-const roomId = ref(gameStore.generateRoomId())
-const selectedCountry = ref('A')
-const isJoining = ref(false)
-const errorMessage = ref('')
+const playerName = ref("");
+const roomId = ref(gameStore.generateRoomId());
+const selectedCountry = ref("A");
+const isJoining = ref(false);
+const errorMessage = ref("");
 
 onMounted(() => {
   if (route.query.roomId) {
-    roomId.value = route.query.roomId as string
+    roomId.value = route.query.roomId as string;
   }
-})
+});
 
-const countries = COUNTRIES
+const countries = COUNTRIES;
 
 async function joinGame() {
   if (!playerName.value.trim()) {
-    errorMessage.value = 'Please enter your name'
-    return
+    errorMessage.value = "Please enter your name";
+    return;
   }
 
   if (!roomId.value.trim()) {
-    errorMessage.value = 'Please enter a room ID'
-    return
+    errorMessage.value = "Please enter a room ID";
+    return;
   }
 
-  isJoining.value = true
-  errorMessage.value = ''
+  isJoining.value = true;
+  errorMessage.value = "";
 
   try {
     // Perform login
-    const token = await gameStore.login(playerName.value.trim(), selectedCountry.value)
-    
+    const token = await gameStore.login(
+      playerName.value.trim(),
+      selectedCountry.value,
+    );
+
     // Set the room ID in the store
-    gameStore.currentRoomId = roomId.value.trim()
-    
+    gameStore.currentRoomId = roomId.value.trim();
+
     // Navigate to game
-    router.push(`/game/${gameStore.currentRoomId}`)
+    router.push(`/game/${gameStore.currentRoomId}`);
   } catch (error) {
-    errorMessage.value = 'Failed to join room. Please try again.'
-    console.error('Join error:', error)
+    errorMessage.value = "Failed to join room. Please try again.";
+    console.error("Join error:", error);
   } finally {
-    isJoining.value = false
+    isJoining.value = false;
   }
 }
 </script>

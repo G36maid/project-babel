@@ -1,31 +1,33 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed } from "vue";
 
-const modelValue = defineModel<string>('modelValue', { required: true })
-const showSymbolKeyboard = defineModel<boolean>('showSymbolKeyboard', { required: true })
+const modelValue = defineModel<string>("modelValue", { required: true });
+const showSymbolKeyboard = defineModel<boolean>("showSymbolKeyboard", {
+  required: true,
+});
 
 const emit = defineEmits<{
-  'send': [content: string]
-}>()
+  send: [content: string];
+}>();
 
-const canSend = computed(() => modelValue.value.trim().length > 0)
+const canSend = computed(() => modelValue.value.trim().length > 0);
 
 function onSend() {
   if (canSend.value) {
-    emit('send', modelValue.value.trim())
-    modelValue.value = ''
+    emit("send", modelValue.value.trim());
+    modelValue.value = "";
   }
 }
 
 function onKeydown(event: KeyboardEvent) {
-  if (event.key === 'Enter' && !event.shiftKey) {
-    event.preventDefault()
-    onSend()
+  if (event.key === "Enter" && !event.shiftKey) {
+    event.preventDefault();
+    onSend();
   }
 }
 
 function toggleSymbolKeyboard() {
-  showSymbolKeyboard.value = !showSymbolKeyboard.value
+  showSymbolKeyboard.value = !showSymbolKeyboard.value;
 }
 </script>
 
