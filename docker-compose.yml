@@ -27,7 +27,7 @@ services:
     environment:
       - RUST_ENV=production
       - PORT=3000
-      - RUST_LOG=info
+      - RUST_LOG=bable=trace,debug
     networks:
       - babel-network
     restart: unless-stopped
