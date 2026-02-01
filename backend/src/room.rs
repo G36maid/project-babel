@@ -1,6 +1,8 @@
 use std::collections::{HashMap, HashSet};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use tracing::{debug, trace};
+
 use crate::data::*;
 use crate::filter::CensorshipFilter;
 use crate::words::{generate_allowed_and_banned_words, load_words};
@@ -200,34 +202,30 @@ impl ChatRoom {
 
     /// Get censored room state for a specific country
     pub fn get_censored_state_for(&self, country: &CountryCode) -> RoomState {
-        let censored_messages = self
+        debug!(
+            room_id = %self.room_id,
+            viewer_country = %country,
+            message_count = self.messages.len(),
+            sender_censor = self.sender_censor,
+            receiver_censor = self.receiver_censor,
+            shadow_ban = self.shadow_ban,
+            "Building censored room state"
+        );
+
+        let censored_messages: Vec<CensoredMessage> = self
             .messages
             .iter()
-            .map(|msg| {
-                let sender = if self.sender_censor && !self.allowed.contains(&msg.sender_country) {
-                    Some(&msg.sender_country)
-                } else {
-                    None
-                };
-                let receiver = if self.receiver_censor && !self.allowed.contains(country) {
-                    Some(country)
-                } else {
-                    None
-                };
-                // shadow_ban: if sender==receiver, skip censorship
-                let (content, was_censored) = if self.shadow_ban && &msg.sender_country == country {
-                    (msg.content.clone(), false)
-                } else {
-                    self.filter.censor_message(&msg.content, sender, receiver)
-                };
-                CensoredMessage {
-                    id: msg.id,
-                    sender_id: msg.sender_id.clone(),
-                    content,
-                    was_censored,
-                }
-            })
+            .map(|msg| self.censor_message_for(msg, country))
             .collect();
+
+        let censored_count = censored_messages.iter().filter(|m| m.was_censored).count();
+        debug!(
+            room_id = %self.room_id,
+            viewer_country = %country,
+            total_messages = censored_messages.len(),
+            censored_count,
+            "Room state censorship complete"
+        );
 
         RoomState {
             room_id: self.room_id.clone(),
@@ -238,22 +236,67 @@ impl ChatRoom {
 
     /// Censor a single message for a specific country
     pub fn censor_message_for(&self, message: &Message, country: &CountryCode) -> CensoredMessage {
+        trace!(
+            message_id = message.id,
+            sender_id = %message.sender_id,
+            sender_country = %message.sender_country,
+            viewer_country = %country,
+            original_content = %message.content,
+            "Processing message censorship"
+        );
+
         let sender = if self.sender_censor && !self.allowed.contains(&message.sender_country) {
+            trace!(
+                sender_country = %message.sender_country,
+                "Applying sender censorship rules"
+            );
             Some(&message.sender_country)
         } else {
+            trace!(
+                sender_censor = self.sender_censor,
+                sender_in_allowed = self.allowed.contains(&message.sender_country),
+                "Skipping sender censorship"
+            );
             None
         };
+
         let receiver = if self.receiver_censor && !self.allowed.contains(country) {
+            trace!(
+                viewer_country = %country,
+                "Applying receiver censorship rules"
+            );
             Some(country)
         } else {
+            trace!(
+                receiver_censor = self.receiver_censor,
+                viewer_in_allowed = self.allowed.contains(country),
+                "Skipping receiver censorship"
+            );
             None
         };
+
         let (content, was_censored) = if self.shadow_ban && &message.sender_country == country {
+            debug!(
+                message_id = message.id,
+                sender_country = %message.sender_country,
+                viewer_country = %country,
+                "Shadow ban active: showing uncensored message to sender's country"
+            );
             (message.content.clone(), false)
         } else {
             self.filter
                 .censor_message(&message.content, sender, receiver)
         };
+
+        debug!(
+            message_id = message.id,
+            viewer_country = %country,
+            was_censored,
+            original = %message.content,
+            result = %content,
+            "Censorship decision complete"
+        );
+
         CensoredMessage {
             id: message.id,
             sender_id: message.sender_id.clone(),
