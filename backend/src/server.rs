@@ -1,3 +1,52 @@
+// POST /api/rooms/{id}/solve_with_note - Use merged player notes to solve
+async fn solve_room_with_note(
+    State(state): State<AppState>,
+    Path(room_id): Path<RoomId>,
+    headers: HeaderMap,
+) -> Result<Json<SolveResponse>, StatusCode> {
+    let user = extract_user_from_headers(&headers, &state.tokens_map)
+        .ok_or(StatusCode::FORBIDDEN)?;
+    let connector = state.room_manager.connect_to_room(&room_id)
+        .ok_or(StatusCode::NOT_FOUND)?;
+    let mut room = connector.room.lock().unwrap();
+    // 只用當前 user 的 player note 作為 answer
+    let answer = room.player_notes.get(&user.user_id).cloned().unwrap_or_default();
+    Ok(Json(solve_answer(&mut room, &user.user_id, answer)))
+}
+// Helper for answer checking and success action, used by both solve_room and solve_room_with_note
+fn solve_answer(room: &mut crate::room::ChatRoom, user_id: &str, answer: HashMap<String, Vec<String>>) -> SolveResponse {
+    let banned_words = &room.filter.config.banned_words;
+    if answer.len() != banned_words.len() {
+        return SolveResponse { solved: false };
+    }
+    for (country, submitted) in &answer {
+        match banned_words.get(country) {
+            Some(expected) => {
+                let s1: std::collections::HashSet<_> = submitted.iter().collect();
+                let s2: std::collections::HashSet<_> = expected.iter().collect();
+                if s1 != s2 {
+                    return SolveResponse { solved: false };
+                }
+            }
+            None => return SolveResponse { solved: false },
+        }
+    }
+    // If correct, send system message and add all countries to allowed
+    let msg = format!("[SYSTEM] {} solved the censorship puzzle!", user_id);
+    room.message_counter += 1;
+    let counter = room.message_counter;
+    room.messages.push(crate::data::Message {
+        id: counter,
+        sender_id: "SYSTEM".to_string(),
+        sender_country: "".to_string(),
+        content: msg,
+        timestamp: crate::room::ChatRoom::current_timestamp(),
+    });
+    for country in banned_words.keys() {
+        room.allowed.insert(country.clone());
+    }
+    SolveResponse { solved: true }
+}
 use std::collections::HashMap;
 #[derive(Deserialize)]
 
@@ -23,38 +72,7 @@ async fn solve_room(
     let connector = state.room_manager.connect_to_room(&room_id)
         .ok_or(StatusCode::NOT_FOUND)?;
     let mut room = connector.room.lock().unwrap();
-    let banned_words = &room.filter.config.banned_words;
-    // Check if country sets match
-    if payload.answer.len() != banned_words.len() {
-        return Ok(Json(SolveResponse { solved: false }));
-    }
-    for (country, submitted) in &payload.answer {
-        match banned_words.get(country) {
-            Some(expected) => {
-                let s1: std::collections::HashSet<_> = submitted.iter().collect();
-                let s2: std::collections::HashSet<_> = expected.iter().collect();
-                if s1 != s2 {
-                    return Ok(Json(SolveResponse { solved: false }));
-                }
-            }
-            None => return Ok(Json(SolveResponse { solved: false })),
-        }
-    }
-    // If correct, send system message and add all countries to allowed
-    let msg = format!("[SYSTEM] {} solved the censorship puzzle!", user.user_id);
-    room.message_counter += 1;
-    let counter = room.message_counter;
-    room.messages.push(crate::data::Message {
-        id: counter,
-        sender_id: "SYSTEM".to_string(),
-        sender_country: "".to_string(),
-        content: msg,
-        timestamp: crate::room::ChatRoom::current_timestamp(),
-    });
-    for country in banned_words.keys() {
-        room.allowed.insert(country.clone());
-    }
-    Ok(Json(SolveResponse { solved: true }))
+    Ok(Json(solve_answer(&mut room, &user.user_id, payload.answer)))
 }
 use futures::SinkExt;
 use futures::StreamExt;
@@ -495,6 +513,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/rooms/{id}/spectate", get(spectate_room))
         .route("/api/rooms/{id}/info", get(get_room_words_info))
         .route("/api/rooms/{id}/solve", post(solve_room))
+        .route("/api/rooms/{id}/solve_with_note", post(solve_room_with_note))
         .route("/api/login", post(login))
         .layer(TraceLayer::new_for_http())
         .layer(cors)
