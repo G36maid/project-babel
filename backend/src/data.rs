@@ -53,13 +53,9 @@ pub enum UserAction {
     System(SystemAction),
     Game(GameAction),
     // Keep legacy variants for backward compatibility during migration
-    #[serde(alias = "send_message")]
     SendMessage(String),
-    #[serde(alias = "send_message_array")]
     SendMessageArray(Vec<String>),
-    #[serde(alias = "submit_notes")]
     SubmitNotes(HashMap<CountryCode, Vec<String>>),
-    #[serde(alias = "leave_room")]
     LeaveRoom,
 }
 

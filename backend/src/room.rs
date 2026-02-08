@@ -164,7 +164,6 @@ impl ChatRoom {
     fn process_game_action(
         &mut self,
         user_id: &UserId,
-        _country: &CountryCode,
         action: GameAction,
     ) -> (Option<Message>, Vec<Notification>) {
         let mut notifications = Vec::new();
@@ -207,9 +206,7 @@ impl ChatRoom {
             UserAction::System(sys_action) => {
                 self.process_system_action(user_id, country, sys_action)
             }
-            UserAction::Game(game_action) => {
-                self.process_game_action(user_id, country, game_action)
-            }
+            UserAction::Game(game_action) => self.process_game_action(user_id, game_action),
             // Legacy actions - convert to new format
             UserAction::SendMessageArray(words) => {
                 self.process_system_action(user_id, country, SystemAction::SendMessageArray(words))
@@ -221,7 +218,7 @@ impl ChatRoom {
                 self.process_system_action(user_id, country, SystemAction::LeaveRoom)
             }
             UserAction::SubmitNotes(note_map) => {
-                self.process_game_action(user_id, country, GameAction::SubmitNotes(note_map))
+                self.process_game_action(user_id, GameAction::SubmitNotes(note_map))
             }
         }
     }
