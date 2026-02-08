@@ -163,7 +163,7 @@ impl ChatRoom {
                 // fallback: split and filter
                 let filtered: Vec<String> = content
                     .split_whitespace()
-                    .filter(|w| self.game.is_word_allowed(&w.to_string()))
+                    .filter(|w| self.game.is_word_allowed(w))
                     .map(|w| w.to_string())
                     .collect();
                 let content = filtered.join(" ");
@@ -257,11 +257,17 @@ impl ChatRoom {
         &self.participants
     }
 
-    pub fn get_player_notes(&self) -> &std::collections::HashMap<UserId, std::collections::HashMap<CountryCode, Vec<String>>> {
+    pub fn get_player_notes(
+        &self,
+    ) -> &std::collections::HashMap<UserId, std::collections::HashMap<CountryCode, Vec<String>>>
+    {
         self.game.get_all_player_notes()
     }
 
-    pub fn get_player_note(&self, user_id: &UserId) -> Option<&std::collections::HashMap<CountryCode, Vec<String>>> {
+    pub fn get_player_note(
+        &self,
+        user_id: &UserId,
+    ) -> Option<&std::collections::HashMap<CountryCode, Vec<String>>> {
         self.game.get_player_notes(user_id)
     }
 

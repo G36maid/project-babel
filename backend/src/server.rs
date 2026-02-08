@@ -134,7 +134,7 @@ async fn submit_notes(
     // We need to use process_action instead of directly accessing game
     // Let's submit via action
     drop(room); // Release lock before sending action
-    
+
     connector
         .action_sender
         .send(UserMessage {
@@ -147,7 +147,7 @@ async fn submit_notes(
 
     // Wait a bit for processing
     tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
-    
+
     let mut room = connector.room.lock().unwrap();
 
     eprintln!("[SubmitNotes] User {} submitted notes", user_id);
@@ -237,11 +237,11 @@ async fn get_room_words_info(
         .connect_to_room(&room_id)
         .ok_or(StatusCode::NOT_FOUND)?;
     let room = connector.room.lock().unwrap();
-    
+
     // Get allowed words and banned words from the game
     let allowed_words = room.allowed_words().to_vec();
     let banned_words = room.filter_config().banned_words.clone();
-    
+
     Ok(Json(RoomWordsInfo {
         allowed_words,
         banned_words,

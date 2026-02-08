@@ -5,7 +5,7 @@ use crate::filter::CensorshipFilter;
 use crate::words::{generate_allowed_and_banned_words, load_words};
 
 /// Trait defining game-specific mechanics separate from chat room management.
-/// 
+///
 /// This trait encapsulates all game logic including censorship rules, word validation,
 /// player progress tracking, and victory conditions. Implementations can define
 /// different game variants while maintaining the same chat infrastructure.
@@ -18,18 +18,11 @@ pub trait GameRules: Send + Sync {
 
     /// Apply censorship to a message for a specific viewer.
     /// Returns (censored_content, was_censored)
-    fn censor_message_for(
-        &self,
-        message: &Message,
-        viewer_country: &CountryCode,
-    ) -> (String, bool);
+    fn censor_message_for(&self, message: &Message, viewer_country: &CountryCode)
+    -> (String, bool);
 
     /// Store player notes (hypotheses about banned words).
-    fn submit_player_notes(
-        &mut self,
-        user_id: &UserId,
-        notes: HashMap<CountryCode, Vec<String>>,
-    );
+    fn submit_player_notes(&mut self, user_id: &UserId, notes: HashMap<CountryCode, Vec<String>>);
 
     /// Get stored notes for a specific player.
     fn get_player_notes(&self, user_id: &UserId) -> Option<&HashMap<CountryCode, Vec<String>>>;
@@ -55,7 +48,7 @@ pub trait GameRules: Send + Sync {
 }
 
 /// Implementation of censorship-based puzzle game rules.
-/// 
+///
 /// This struct manages the word-guessing puzzle where players must discover
 /// which words are banned in different countries by observing censorship patterns.
 pub struct CensorshipGame {
@@ -88,7 +81,7 @@ impl CensorshipGame {
         let words = load_words("words.json");
         let country_codes = ["A", "B", "C", "D"];
         let (allowed_words, banned_map) = generate_allowed_and_banned_words(&words, &country_codes);
-        
+
         // Clone and update the config's banned_words for this game
         let mut config_owned = config.clone();
         for (country, banned) in &banned_map {
@@ -162,11 +155,12 @@ impl GameRules for CensorshipGame {
             return (message.content.clone(), false);
         }
 
-        let sender = if self.sender_censor && !self.allowed_countries.contains(&message.sender_country) {
-            Some(&message.sender_country)
-        } else {
-            None
-        };
+        let sender =
+            if self.sender_censor && !self.allowed_countries.contains(&message.sender_country) {
+                Some(&message.sender_country)
+            } else {
+                None
+            };
 
         let receiver = if self.receiver_censor && !self.allowed_countries.contains(viewer_country) {
             Some(viewer_country)
@@ -177,15 +171,12 @@ impl GameRules for CensorshipGame {
         if self.shadow_ban && &message.sender_country == viewer_country {
             (message.content.clone(), false)
         } else {
-            self.filter.censor_message(&message.content, sender, receiver)
+            self.filter
+                .censor_message(&message.content, sender, receiver)
         }
     }
 
-    fn submit_player_notes(
-        &mut self,
-        user_id: &UserId,
-        notes: HashMap<CountryCode, Vec<String>>,
-    ) {
+    fn submit_player_notes(&mut self, user_id: &UserId, notes: HashMap<CountryCode, Vec<String>>) {
         self.player_notes.insert(user_id.clone(), notes);
     }
 
@@ -199,10 +190,8 @@ impl GameRules for CensorshipGame {
 
     fn calculate_player_progress(&self, participants: &[Participant]) -> Vec<PlayerProgress> {
         // Get countries of current participants
-        let active_countries: HashSet<String> = participants
-            .iter()
-            .map(|p| p.country.clone())
-            .collect();
+        let active_countries: HashSet<String> =
+            participants.iter().map(|p| p.country.clone()).collect();
 
         // Get only banned words for countries that are currently in the room
         let all_banned_words: HashSet<String> = self
@@ -219,16 +208,17 @@ impl GameRules for CensorshipGame {
         participants
             .iter()
             .map(|participant| {
-                let discovered_count = if let Some(notes) = self.player_notes.get(&participant.user_id) {
-                    // Collect all unique words from player's notes
-                    let discovered: HashSet<String> =
-                        notes.values().flatten().map(|s| s.to_lowercase()).collect();
+                let discovered_count =
+                    if let Some(notes) = self.player_notes.get(&participant.user_id) {
+                        // Collect all unique words from player's notes
+                        let discovered: HashSet<String> =
+                            notes.values().flatten().map(|s| s.to_lowercase()).collect();
 
-                    // Count how many match actual banned words
-                    discovered.intersection(&all_banned_words).count()
-                } else {
-                    0
-                };
+                        // Count how many match actual banned words
+                        discovered.intersection(&all_banned_words).count()
+                    } else {
+                        0
+                    };
 
                 PlayerProgress {
                     user_id: participant.user_id.clone(),
@@ -313,13 +303,7 @@ mod tests {
     #[test]
     fn test_submit_and_get_player_notes() {
         let config = make_test_config();
-        let mut game = CensorshipGame::new_for_test(
-            config,
-            vec![],
-            false,
-            false,
-            false,
-        );
+        let mut game = CensorshipGame::new_for_test(config, vec![], false, false, false);
 
         let user_id = "alice".to_string();
         let mut notes = HashMap::new();
@@ -334,21 +318,13 @@ mod tests {
     #[test]
     fn test_calculate_player_progress() {
         let config = make_test_config();
-        let mut game = CensorshipGame::new_for_test(
-            config,
-            vec![],
-            false,
-            false,
-            false,
-        );
+        let mut game = CensorshipGame::new_for_test(config, vec![], false, false, false);
 
-        let participants = vec![
-            Participant {
-                user_id: "alice".to_string(),
-                country: "A".to_string(),
-                joined_at: 0,
-            },
-        ];
+        let participants = vec![Participant {
+            user_id: "alice".to_string(),
+            country: "A".to_string(),
+            joined_at: 0,
+        }];
 
         // No notes submitted yet
         let progress = game.calculate_player_progress(&participants);
@@ -369,21 +345,13 @@ mod tests {
     #[test]
     fn test_check_victory() {
         let config = make_test_config();
-        let mut game = CensorshipGame::new_for_test(
-            config,
-            vec![],
-            false,
-            false,
-            false,
-        );
+        let mut game = CensorshipGame::new_for_test(config, vec![], false, false, false);
 
-        let participants = vec![
-            Participant {
-                user_id: "alice".to_string(),
-                country: "A".to_string(),
-                joined_at: 0,
-            },
-        ];
+        let participants = vec![Participant {
+            user_id: "alice".to_string(),
+            country: "A".to_string(),
+            joined_at: 0,
+        }];
 
         // Victory not achieved yet
         assert!(!game.check_victory(&participants));
@@ -403,13 +371,7 @@ mod tests {
     #[test]
     fn test_censor_message_receiver_mode() {
         let config = make_test_config();
-        let game = CensorshipGame::new_for_test(
-            config,
-            vec![],
-            false,
-            true,
-            false,
-        );
+        let game = CensorshipGame::new_for_test(config, vec![], false, true, false);
 
         let message = Message {
             id: 1,
@@ -433,13 +395,7 @@ mod tests {
     #[test]
     fn test_unlock_all_countries() {
         let config = make_test_config();
-        let mut game = CensorshipGame::new_for_test(
-            config,
-            vec![],
-            true,
-            true,
-            false,
-        );
+        let mut game = CensorshipGame::new_for_test(config, vec![], true, true, false);
 
         let message = Message {
             id: 1,
