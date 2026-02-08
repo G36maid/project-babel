@@ -14,7 +14,7 @@ static FILTER_CONFIG: Lazy<FilterConfig> = Lazy::new(FilterConfig::default);
 pub struct DefaultRoomConfig;
 
 impl RoomConfig for DefaultRoomConfig {
-    fn get_filter_config(&self) -> &'static FilterConfig {
+    fn get_filter_config(&self) -> &FilterConfig {
         &FILTER_CONFIG
     }
 

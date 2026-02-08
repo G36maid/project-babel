@@ -36,7 +36,7 @@ pub struct ChatRoom {
 }
 
 impl ChatRoom {
-    pub fn new(room_id: RoomId, config: &'static FilterConfig) -> Self {
+    pub fn new(room_id: RoomId, config: &FilterConfig) -> Self {
         let game = CensorshipGame::new(config);
 
         // Create initial game instructions message
@@ -508,17 +508,17 @@ mod tests {
     use super::*;
     use std::collections::HashMap;
 
-    fn make_test_config() -> &'static FilterConfig {
+    fn make_test_config() -> FilterConfig {
         let mut banned_words = HashMap::new();
         banned_words.insert("A".to_string(), vec!["freedom".to_string()]);
         banned_words.insert("B".to_string(), vec!["monarchy".to_string()]);
-        Box::leak(Box::new(FilterConfig { banned_words }))
+        FilterConfig { banned_words }
     }
 
     #[test]
     fn test_send_note_generates_notification() {
         let config = make_test_config();
-        let mut room = ChatRoom::new("test_room".to_string(), config);
+        let mut room = ChatRoom::new("test_room".to_string(), &config);
 
         let user_id = "alice".to_string();
         let country = "A".to_string();
@@ -554,7 +554,7 @@ mod tests {
     #[test]
     fn test_send_note_empty_map() {
         let config = make_test_config();
-        let mut room = ChatRoom::new("test_room".to_string(), config);
+        let mut room = ChatRoom::new("test_room".to_string(), &config);
 
         let user_id = "bob".to_string();
         let country = "B".to_string();
@@ -578,7 +578,7 @@ mod tests {
     #[test]
     fn test_send_note_single_country() {
         let config = make_test_config();
-        let mut room = ChatRoom::new("test_room".to_string(), config);
+        let mut room = ChatRoom::new("test_room".to_string(), &config);
 
         let user_id = "charlie".to_string();
         let country = "C".to_string();
@@ -608,7 +608,7 @@ mod tests {
     #[test]
     fn test_send_note_single_word() {
         let config = make_test_config();
-        let mut room = ChatRoom::new("test_room".to_string(), config);
+        let mut room = ChatRoom::new("test_room".to_string(), &config);
 
         let user_id = "diana".to_string();
         let country = "D".to_string();
@@ -631,7 +631,7 @@ mod tests {
     #[test]
     fn test_send_note_updates_latest() {
         let config = make_test_config();
-        let mut room = ChatRoom::new("test_room".to_string(), config);
+        let mut room = ChatRoom::new("test_room".to_string(), &config);
 
         let user_id = "alice".to_string();
         let country = "A".to_string();
@@ -667,7 +667,7 @@ mod tests {
     #[test]
     fn test_system_action_send_message() {
         let config = make_test_config();
-        let mut room = ChatRoom::new("test_room".to_string(), config);
+        let mut room = ChatRoom::new("test_room".to_string(), &config);
 
         let user_id = "alice".to_string();
         let country = "A".to_string();
@@ -687,7 +687,7 @@ mod tests {
     #[test]
     fn test_system_action_send_message_array() {
         let config = make_test_config();
-        let mut room = ChatRoom::new("test_room".to_string(), config);
+        let mut room = ChatRoom::new("test_room".to_string(), &config);
 
         let user_id = "bob".to_string();
         let country = "B".to_string();
@@ -710,7 +710,7 @@ mod tests {
     #[test]
     fn test_system_action_leave_room() {
         let config = make_test_config();
-        let mut room = ChatRoom::new("test_room".to_string(), config);
+        let mut room = ChatRoom::new("test_room".to_string(), &config);
 
         let user_id = "charlie".to_string();
         let country = "C".to_string();
@@ -733,7 +733,7 @@ mod tests {
     #[test]
     fn test_game_action_submit_notes() {
         let config = make_test_config();
-        let mut room = ChatRoom::new("test_room".to_string(), config);
+        let mut room = ChatRoom::new("test_room".to_string(), &config);
 
         let user_id = "diana".to_string();
         let country = "D".to_string();
@@ -764,7 +764,7 @@ mod tests {
     #[test]
     fn test_legacy_actions_still_work() {
         let config = make_test_config();
-        let mut room = ChatRoom::new("test_room".to_string(), config);
+        let mut room = ChatRoom::new("test_room".to_string(), &config);
 
         let user_id = "eve".to_string();
         let country = "E".to_string();

@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 
 use crate::data::*;
 use crate::filter::CensorshipFilter;
@@ -54,8 +55,8 @@ pub trait GameRules: Send + Sync {
 pub struct CensorshipGame {
     /// The censorship filter that processes messages based on country rules.
     filter: CensorshipFilter,
-    /// Static reference to the filter configuration.
-    config: &'static FilterConfig,
+    /// Shared reference to the filter configuration.
+    config: Arc<FilterConfig>,
     /// Words that participants are allowed to use in messages.
     allowed_words: Vec<String>,
     /// Whether to apply censorship based on the sender's country.
@@ -76,7 +77,7 @@ pub struct CensorshipGame {
 
 impl CensorshipGame {
     /// Create a new censorship game with generated words and default settings.
-    pub fn new(config: &'static FilterConfig) -> Self {
+    pub fn new(config: &FilterConfig) -> Self {
         // Load words from words.json
         let words = load_words("words.json");
         let country_codes = ["A", "B", "C", "D"];
@@ -89,11 +90,11 @@ impl CensorshipGame {
                 .banned_words
                 .insert(country.clone(), banned.clone());
         }
-        let config_ref: &'static FilterConfig = Box::leak(Box::new(config_owned));
+        let config_arc = Arc::new(config_owned);
 
         Self {
-            filter: CensorshipFilter::new(config_ref),
-            config: config_ref,
+            filter: CensorshipFilter::new(Arc::clone(&config_arc)),
+            config: config_arc,
             allowed_words,
             sender_censor: true,
             receiver_censor: true,
@@ -108,14 +109,14 @@ impl CensorshipGame {
     /// Create a game instance for testing with custom configuration.
     #[cfg(test)]
     pub fn new_for_test(
-        config: &'static FilterConfig,
+        config: Arc<FilterConfig>,
         allowed_words: Vec<String>,
         sender_censor: bool,
         receiver_censor: bool,
         shadow_ban: bool,
     ) -> Self {
         Self {
-            filter: CensorshipFilter::new(config),
+            filter: CensorshipFilter::new(Arc::clone(&config)),
             config,
             allowed_words,
             sender_censor,
@@ -269,7 +270,7 @@ impl GameRules for CensorshipGame {
     }
 
     fn filter_config(&self) -> &FilterConfig {
-        self.config
+        &self.config
     }
 }
 
@@ -277,11 +278,11 @@ impl GameRules for CensorshipGame {
 mod tests {
     use super::*;
 
-    fn make_test_config() -> &'static FilterConfig {
+    fn make_test_config() -> Arc<FilterConfig> {
         let mut banned_words = HashMap::new();
         banned_words.insert("A".to_string(), vec!["freedom".to_string()]);
         banned_words.insert("B".to_string(), vec!["monarchy".to_string()]);
-        Box::leak(Box::new(FilterConfig { banned_words }))
+        Arc::new(FilterConfig { banned_words })
     }
 
     #[test]
