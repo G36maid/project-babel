@@ -18,8 +18,8 @@ impl RoomConfig for DefaultRoomConfig {
         &FILTER_CONFIG
     }
 
-    fn init_room(&self, room_id: RoomId) -> ChatRoom {
-        ChatRoom::new(room_id, &FILTER_CONFIG)
+    fn init_room(&self, room_id: RoomId) -> Box<dyn Room> {
+        Box::new(ChatRoom::new(room_id, &FILTER_CONFIG))
     }
 }
 

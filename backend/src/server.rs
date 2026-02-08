@@ -28,7 +28,7 @@ async fn solve_room_with_note(
     }))
 }
 // Helper for answer checking and success action, used by both solve_room and solve_room_with_note
-fn solve_answer(room: &mut crate::room::ChatRoom, answer: HashMap<String, Vec<String>>) -> bool {
+fn solve_answer(room: &mut Box<dyn Room>, answer: HashMap<String, Vec<String>>) -> bool {
     let banned_words = &room.filter_config().banned_words;
     if answer.len() != banned_words.len() {
         return false;
@@ -132,7 +132,7 @@ async fn submit_notes(
     // Update player's notes via process_action
     let user_id = user.user_id.clone();
     let country = user.country.clone();
-    
+
     // Process the action directly to ensure synchronous completion
     let (_, _) = room.process_action(&user_id, &country, UserAction::SubmitNotes(payload.notes));
 

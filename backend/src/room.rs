@@ -1,9 +1,9 @@
-use std::time::{SystemTime, UNIX_EPOCH};
-
-use tracing::{debug, trace};
-
 use crate::data::*;
 use crate::game::{CensorshipGame, GameRules};
+
+use std::collections::HashMap;
+use std::time::{SystemTime, UNIX_EPOCH};
+use tracing::{debug, trace};
 
 /// Game instructions message displayed when a room is created
 const GAME_INSTRUCTIONS: &str = "Welcome to Project Babel! You are trying to communicate across a censorship firewall. Each country has different words that are banned. Work together to discover which words are censored for each country using the allowed symbols. Good luck!";
@@ -297,10 +297,255 @@ impl ChatRoom {
     }
 }
 
+impl Room for ChatRoom {
+    fn room_id(&self) -> &RoomId {
+        &self.room_id
+    }
+
+    fn participants(&self) -> &[Participant] {
+        &self.participants
+    }
+
+    fn is_empty(&self) -> bool {
+        self.participants.is_empty()
+    }
+
+    fn add_participant(&mut self, user_id: UserId, country: CountryCode) -> bool {
+        if self.participants.iter().any(|p| p.user_id == user_id) {
+            return false;
+        }
+
+        self.participants.push(Participant {
+            user_id,
+            country,
+            joined_at: Self::current_timestamp(),
+        });
+        true
+    }
+
+    fn remove_participant(&mut self, user_id: &UserId) -> bool {
+        let initial_len = self.participants.len();
+        self.participants.retain(|p| &p.user_id != user_id);
+        self.participants.len() < initial_len
+    }
+
+    fn process_action(
+        &mut self,
+        user_id: &UserId,
+        country: &CountryCode,
+        action: UserAction,
+    ) -> (Option<Message>, Vec<Notification>) {
+        let mut notifications = Vec::new();
+
+        match action {
+            // Accept only allowed words in message array
+            UserAction::SendMessageArray(words) => {
+                // Only keep allowed words
+                let filtered: Vec<String> = words
+                    .into_iter()
+                    .filter(|w| self.game.is_word_allowed(w))
+                    .collect();
+                let content = filtered.join(" ");
+                if content.is_empty() {
+                    return (None, notifications);
+                }
+                self.message_counter += 1;
+                let message = Message {
+                    id: self.message_counter,
+                    sender_id: user_id.clone(),
+                    sender_country: country.clone(),
+                    content,
+                    timestamp: Self::current_timestamp(),
+                };
+                self.messages.push(message.clone());
+                (Some(message), notifications)
+            }
+            UserAction::SubmitNotes(note_map) => {
+                // Send note: players share their hypotheses about banned words
+                // Store the latest notes for this user
+                self.game.submit_player_notes(user_id, note_map.clone());
+
+                // This generates a notification for other participants
+                let country_count = note_map.len();
+                let total_words: usize = note_map.values().map(|v| v.len()).sum();
+                let country_label = if country_count == 1 {
+                    "country"
+                } else {
+                    "countries"
+                };
+                let word_label = if total_words == 1 { "word" } else { "words" };
+                notifications.push(Notification {
+                    message: format!(
+                        "{} shared exploration notes ({} {}, {} {})",
+                        user_id, country_count, country_label, total_words, word_label
+                    ),
+                });
+                (None, notifications)
+            }
+            UserAction::LeaveRoom => {
+                let initial_len = self.participants.len();
+                self.participants.retain(|p| &p.user_id != user_id);
+                if self.participants.len() < initial_len {
+                    notifications.push(Notification {
+                        message: format!("{} left the room", user_id),
+                    });
+                }
+                (None, notifications)
+            }
+            // fallback for old SendMessage (single string)
+            UserAction::SendMessage(content) => {
+                // fallback: split and filter
+                let filtered: Vec<String> = content
+                    .split_whitespace()
+                    .filter(|w| self.game.is_word_allowed(w))
+                    .map(|w| w.to_string())
+                    .collect();
+                let content = filtered.join(" ");
+                if content.is_empty() {
+                    return (None, notifications);
+                }
+                self.message_counter += 1;
+                let message = Message {
+                    id: self.message_counter,
+                    sender_id: user_id.clone(),
+                    sender_country: country.clone(),
+                    content,
+                    timestamp: Self::current_timestamp(),
+                };
+                self.messages.push(message.clone());
+                (Some(message), notifications)
+            }
+        }
+    }
+
+    fn get_censored_state_for(&self, country: &CountryCode) -> RoomState {
+        debug!(
+            room_id = %self.room_id,
+            viewer_country = %country,
+            message_count = self.messages.len(),
+            "Building censored room state"
+        );
+
+        let censored_messages: Vec<CensoredMessage> = self
+            .messages
+            .iter()
+            .map(|msg| {
+                // Inline censor_message_for to avoid recursion
+                trace!(
+                    message_id = msg.id,
+                    sender_id = %msg.sender_id,
+                    sender_country = %msg.sender_country,
+                    viewer_country = %country,
+                    original_content = %msg.content,
+                    "Processing message censorship"
+                );
+
+                let (content, was_censored) = self.game.censor_message_for(msg, country);
+
+                debug!(
+                    message_id = msg.id,
+                    viewer_country = %country,
+                    was_censored,
+                    original = %msg.content,
+                    result = %content,
+                    "Censorship decision complete"
+                );
+
+                CensoredMessage {
+                    id: msg.id,
+                    sender_id: msg.sender_id.clone(),
+                    content,
+                    was_censored,
+                }
+            })
+            .collect();
+
+        let censored_count = censored_messages.iter().filter(|m| m.was_censored).count();
+        debug!(
+            room_id = %self.room_id,
+            viewer_country = %country,
+            total_messages = censored_messages.len(),
+            censored_count,
+            "Room state censorship complete"
+        );
+
+        RoomState {
+            room_id: self.room_id.clone(),
+            participants: self.participants.clone(),
+            recent_messages: censored_messages,
+        }
+    }
+
+    fn censor_message_for(&self, message: &Message, country: &CountryCode) -> CensoredMessage {
+        trace!(
+            message_id = message.id,
+            sender_id = %message.sender_id,
+            sender_country = %message.sender_country,
+            viewer_country = %country,
+            original_content = %message.content,
+            "Processing message censorship"
+        );
+
+        let (content, was_censored) = self.game.censor_message_for(message, country);
+
+        debug!(
+            message_id = message.id,
+            viewer_country = %country,
+            was_censored,
+            original = %message.content,
+            result = %content,
+            "Censorship decision complete"
+        );
+
+        CensoredMessage {
+            id: message.id,
+            sender_id: message.sender_id.clone(),
+            content,
+            was_censored,
+        }
+    }
+
+    fn win(&mut self) {
+        let msg = "[SYSTEM] Censorship puzzle is finished!".to_string();
+        self.message_counter += 1;
+        self.messages.push(Message {
+            id: self.message_counter,
+            sender_id: "SYSTEM".to_string(),
+            sender_country: "".to_string(),
+            content: msg,
+            timestamp: Self::current_timestamp(),
+        });
+        self.game.unlock_all_countries();
+    }
+
+    fn get_player_notes(&self) -> &HashMap<UserId, HashMap<CountryCode, Vec<String>>> {
+        self.game.get_all_player_notes()
+    }
+
+    fn get_player_progress(&self) -> Vec<PlayerProgress> {
+        self.game.calculate_player_progress(&self.participants)
+    }
+
+    fn check_victory(&mut self) -> bool {
+        self.game.check_victory(&self.participants)
+    }
+
+    fn get_victory_state(&self) -> VictoryState {
+        self.game.get_victory_state(&self.participants)
+    }
+
+    fn filter_config(&self) -> &FilterConfig {
+        self.game.filter_config()
+    }
+
+    fn allowed_words(&self) -> &[String] {
+        self.game.allowed_words()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::game::CensorshipGame;
     use std::collections::HashMap;
 
     fn make_test_config() -> &'static FilterConfig {

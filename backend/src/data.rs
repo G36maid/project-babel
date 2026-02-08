@@ -2,8 +2,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use utoipa::ToSchema;
 
-use crate::room::ChatRoom;
-
 pub type RoomId = String;
 pub type UserId = String;
 pub type MessageId = u64;
@@ -91,9 +89,67 @@ pub struct FilterConfig {
     pub banned_words: HashMap<CountryCode, Vec<String>>,
 }
 
+/// Trait defining the core behavior of a game room.
+///
+/// This trait abstracts room management, allowing different room implementations
+/// while maintaining consistent server behavior.
+pub trait Room: Send + Sync {
+    /// Get the room's unique identifier.
+    fn room_id(&self) -> &RoomId;
+
+    /// Get the list of current participants.
+    fn participants(&self) -> &[Participant];
+
+    /// Check if the room has no participants.
+    fn is_empty(&self) -> bool;
+
+    /// Add a participant to the room.
+    /// Returns true if the participant was added, false if already present.
+    fn add_participant(&mut self, user_id: UserId, country: CountryCode) -> bool;
+
+    /// Remove a participant from the room.
+    /// Returns true if the participant was removed, false if not found.
+    fn remove_participant(&mut self, user_id: &UserId) -> bool;
+
+    /// Process a user action and return the resulting message and notifications.
+    fn process_action(
+        &mut self,
+        user_id: &UserId,
+        country: &CountryCode,
+        action: UserAction,
+    ) -> (Option<Message>, Vec<Notification>);
+
+    /// Get the room state censored for a specific country.
+    fn get_censored_state_for(&self, country: &CountryCode) -> RoomState;
+
+    /// Censor a single message for a specific country.
+    fn censor_message_for(&self, message: &Message, country: &CountryCode) -> CensoredMessage;
+
+    /// Trigger victory condition (used when puzzle is solved).
+    fn win(&mut self);
+
+    /// Get all player notes.
+    fn get_player_notes(&self) -> &HashMap<UserId, HashMap<CountryCode, Vec<String>>>;
+
+    /// Get player progress for all participants.
+    fn get_player_progress(&self) -> Vec<PlayerProgress>;
+
+    /// Check if victory conditions are met.
+    fn check_victory(&mut self) -> bool;
+
+    /// Get the current victory state.
+    fn get_victory_state(&self) -> VictoryState;
+
+    /// Get the filter configuration.
+    fn filter_config(&self) -> &FilterConfig;
+
+    /// Get the list of allowed words.
+    fn allowed_words(&self) -> &[String];
+}
+
 pub trait RoomConfig: Send + Sync {
     fn get_filter_config(&self) -> &'static FilterConfig;
-    fn init_room(&self, room_id: RoomId) -> ChatRoom;
+    fn init_room(&self, room_id: RoomId) -> Box<dyn Room>;
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema)]

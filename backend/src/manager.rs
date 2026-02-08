@@ -4,10 +4,9 @@ use std::sync::{Arc, Mutex};
 use tokio::sync::{mpsc, watch};
 
 use crate::data::*;
-use crate::room::ChatRoom;
 
 pub struct RoomRunner {
-    room: Arc<Mutex<ChatRoom>>,
+    room: Arc<Mutex<Box<dyn Room>>>,
     action_receiver: mpsc::Receiver<UserMessage>,
     update_sender: watch::Sender<RoomUpdate>,
     room_manager: Arc<RoomManager>,
@@ -18,7 +17,7 @@ pub struct RoomConnector {
     pub action_sender: mpsc::Sender<UserMessage>,
     pub update_receiver: watch::Receiver<RoomUpdate>,
     pub update_sender: watch::Sender<RoomUpdate>,
-    pub room: Arc<Mutex<ChatRoom>>,
+    pub room: Arc<Mutex<Box<dyn Room>>>,
 }
 
 pub struct RoomManager {
