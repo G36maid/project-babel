@@ -162,7 +162,7 @@ export const useGameStore = defineStore("game", () => {
     }
 
     console.log("[Store] Sending message:", content);
-    const action: UserAction = { send_message: content };
+    const action: UserAction = { system: { send_message: content } };
     const payload = JSON.stringify(action);
     console.log("[Store] Payload:", payload);
     ws.send(payload);
@@ -171,7 +171,7 @@ export const useGameStore = defineStore("game", () => {
   function leaveRoom() {
     if (!ws || !ws.send) return;
 
-    const action: UserAction = { leave_room: null };
+    const action: UserAction = { system: { leave_room: null } };
     ws.send(JSON.stringify(action));
     ws.close();
     ws = null;
