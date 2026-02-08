@@ -261,102 +261,6 @@ struct ClientRoomUpdate {
     victory: Option<VictoryState>,
 }
 
-/// Censors a message based on banned words for a specific country.
-fn censor_message_for_country(
-    message: &Message,
-    viewer_country: &CountryCode,
-    banned_words: &HashMap<String, Vec<String>>,
-    sender_censor: bool,
-    receiver_censor: bool,
-    shadow_ban: bool,
-) -> CensoredMessage {
-    // System messages are never censored
-    if message.sender_id == "SYSTEM" {
-        return CensoredMessage {
-            id: message.id,
-            sender_id: message.sender_id.clone(),
-            content: message.content.clone(),
-            was_censored: false,
-        };
-    }
-
-    // Shadow ban: sender sees their own message uncensored
-    if shadow_ban && &message.sender_country == viewer_country {
-        return CensoredMessage {
-            id: message.id,
-            sender_id: message.sender_id.clone(),
-            content: message.content.clone(),
-            was_censored: false,
-        };
-    }
-
-    let mut content = message.content.clone();
-    let mut was_censored = false;
-
-    // Apply sender's country filter (sender_censor mode)
-    #[allow(clippy::collapsible_if)]
-    if sender_censor {
-        if let Some(words) = banned_words.get(&message.sender_country) {
-            for word in words {
-                let lower_content = content.to_lowercase();
-                let lower_word = word.to_lowercase();
-                if lower_content.contains(&lower_word) {
-                    let mut result = String::new();
-                    let mut last_end = 0;
-                    for (start, _) in lower_content.match_indices(&lower_word) {
-                        result.push_str(&content[last_end..start]);
-                        result.push_str(CENSORSHIP_REPLACEMENT);
-                        last_end = start + word.len();
-                    }
-                    result.push_str(&content[last_end..]);
-                    content = result;
-                    was_censored = true;
-                }
-            }
-        }
-    }
-
-    // Apply receiver's country filter (receiver_censor mode)
-    #[allow(clippy::collapsible_if)]
-    if receiver_censor {
-        if let Some(words) = banned_words.get(viewer_country) {
-            for word in words {
-                let lower_content = content.to_lowercase();
-                let lower_word = word.to_lowercase();
-                if lower_content.contains(&lower_word) {
-                    // Replace all occurrences (case-insensitive)
-                    let mut result = String::new();
-                    let mut last_end = 0;
-                    for (start, _) in lower_content.match_indices(&lower_word) {
-                        result.push_str(&content[last_end..start]);
-                        result.push_str(CENSORSHIP_REPLACEMENT);
-                        last_end = start + word.len();
-                    }
-                    result.push_str(&content[last_end..]);
-                    content = result;
-                    was_censored = true;
-                }
-            }
-        }
-    }
-
-    debug!(
-        message_id = message.id,
-        viewer_country = %viewer_country,
-        was_censored,
-        original = %message.content,
-        result = %content,
-        "Censored message for client"
-    );
-
-    CensoredMessage {
-        id: message.id,
-        sender_id: message.sender_id.clone(),
-        content,
-        was_censored,
-    }
-}
-
 #[derive(Clone)]
 pub struct AppState {
     pub room_manager: Arc<RoomManager>,
@@ -579,29 +483,15 @@ async fn handle_participant_socket(
                         let update = update_receiver.borrow().clone();
 
                         // Lock the room only to extract the needed fields, then drop the lock before await
-                        let (banned_words, sender_censor, receiver_censor, shadow_ban) = {
+                        // Censor messages for this user's country using the room's method
+                        let censored_messages: Vec<CensoredMessage> = {
                             let locked_room = room.lock().unwrap();
-                            (
-                                locked_room.filter.config.banned_words.clone(),
-                                locked_room.sender_censor,
-                                locked_room.receiver_censor,
-                                locked_room.shadow_ban,
-                            )
+                            update
+                                .new_messages
+                                .iter()
+                                .map(|msg| locked_room.censor_message_for(msg, &user.country))
+                                .collect()
                         };
-
-                        // Censor messages for this user's country
-                        let censored_messages: Vec<CensoredMessage> = update
-                            .new_messages
-                            .iter()
-                            .map(|msg| censor_message_for_country(
-                                msg,
-                                &user.country,
-                                &banned_words,
-                                sender_censor,
-                                receiver_censor,
-                                shadow_ban
-                            ))
-                            .collect();
 
                         let client_update = ClientRoomUpdate {
                             room_state: update.room_state,
@@ -760,100 +650,6 @@ pub fn build_router(state: AppState) -> Router {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
-    fn make_test_message(content: &str, sender_country: &str) -> Message {
-        Message {
-            id: 1,
-            sender_id: "sender".to_string(),
-            sender_country: sender_country.to_string(),
-            content: content.to_string(),
-            timestamp: 0,
-        }
-    }
-
-    #[test]
-    fn test_censor_message_receiver_only() {
-        let mut banned_words = HashMap::new();
-        banned_words.insert("B".to_string(), vec!["bad".to_string()]);
-
-        let msg = make_test_message("hello bad world", "A");
-
-        // Receiver B has "bad" banned
-        let censored = censor_message_for_country(
-            &msg,
-            &"B".to_string(),
-            &banned_words,
-            false, // sender_censor
-            true,  // receiver_censor
-            false, // shadow_ban
-        );
-
-        assert!(censored.was_censored);
-        assert_eq!(censored.content, "hello *** world");
-    }
-
-    #[test]
-    fn test_censor_message_sender_only() {
-        let mut banned_words = HashMap::new();
-        banned_words.insert("A".to_string(), vec!["bad".to_string()]);
-
-        let msg = make_test_message("hello bad world", "A");
-
-        // Receiver B doesn't have "bad" banned, but Sender A does
-        let censored = censor_message_for_country(
-            &msg,
-            &"B".to_string(),
-            &banned_words,
-            true,  // sender_censor
-            false, // receiver_censor
-            false, // shadow_ban
-        );
-
-        assert!(censored.was_censored);
-        assert_eq!(censored.content, "hello *** world");
-    }
-
-    #[test]
-    fn test_shadow_ban() {
-        let mut banned_words = HashMap::new();
-        banned_words.insert("A".to_string(), vec!["bad".to_string()]);
-
-        let msg = make_test_message("hello bad world", "A");
-
-        // Viewer is Sender (A). Word is banned in A.
-        // Without shadow ban, it would be censored.
-        let censored = censor_message_for_country(
-            &msg,
-            &"A".to_string(),
-            &banned_words,
-            false, // sender_censor
-            true,  // receiver_censor
-            true,  // shadow_ban
-        );
-
-        assert!(!censored.was_censored);
-        assert_eq!(censored.content, "hello bad world");
-    }
-
-    #[test]
-    fn test_sender_censorship_disabled() {
-        let mut banned_words = HashMap::new();
-        banned_words.insert("A".to_string(), vec!["bad".to_string()]);
-
-        let msg = make_test_message("hello bad world", "A");
-
-        // Sender A has "bad" banned, but sender_censor is false
-        let censored = censor_message_for_country(
-            &msg,
-            &"B".to_string(),
-            &banned_words,
-            false, // sender_censor
-            false, // receiver_censor
-            false, // shadow_ban
-        );
-
-        assert!(!censored.was_censored);
-        assert_eq!(censored.content, "hello bad world");
-    }
+    // Note: Censorship tests are located in room.rs
+    // This module is kept for potential future server-specific tests
 }
