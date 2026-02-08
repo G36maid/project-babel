@@ -12,7 +12,7 @@ async fn solve_room_with_note(
         .ok_or(StatusCode::NOT_FOUND)?;
     let mut room = connector.room.lock().unwrap();
     // 所有玩家的 player note 都要答對才算勝利
-    let notes: Vec<_> = room.player_notes.values().cloned().collect();
+    let notes: Vec<_> = room.get_player_notes().values().cloned().collect();
     let mut all_correct = true;
     for note in notes {
         if !solve_answer(&mut room, note) {
@@ -29,7 +29,7 @@ async fn solve_room_with_note(
 }
 // Helper for answer checking and success action, used by both solve_room and solve_room_with_note
 fn solve_answer(room: &mut crate::room::ChatRoom, answer: HashMap<String, Vec<String>>) -> bool {
-    let banned_words = &room.filter.config.banned_words;
+    let banned_words = &room.filter_config().banned_words;
     if answer.len() != banned_words.len() {
         return false;
     }
@@ -129,20 +129,22 @@ async fn submit_notes(
 
     let mut room = connector.room.lock().unwrap();
 
-    // Update player's notes
-    room.player_notes
-        .insert(user.user_id.clone(), payload.notes);
+    // Update player's notes via process_action
+    let user_id = user.user_id.clone();
+    let country = user.country.clone();
+    
+    // Process the action directly to ensure synchronous completion
+    let (_, _) = room.process_action(&user_id, &country, UserAction::SubmitNotes(payload.notes));
 
-    eprintln!("[SubmitNotes] User {} submitted notes", user.user_id);
+    eprintln!("[SubmitNotes] User {} submitted notes", user_id);
 
     // Calculate progress for this specific user
     let all_progress = room.get_player_progress();
-    let user_progress = all_progress.iter().find(|p| p.user_id == user.user_id);
+    let user_progress = all_progress.iter().find(|p| p.user_id == user_id);
 
     let discovered_count = user_progress.map(|p| p.discovered_count).unwrap_or(0);
     let total_required = room
-        .filter
-        .config
+        .filter_config()
         .banned_words
         .values()
         .map(|words| words.len())
@@ -150,7 +152,7 @@ async fn submit_notes(
 
     eprintln!(
         "[SubmitNotes] Progress: {} discovered {} / {} words",
-        user.user_id, discovered_count, total_required
+        user_id, discovered_count, total_required
     );
 
     // Check victory
@@ -221,8 +223,11 @@ async fn get_room_words_info(
         .connect_to_room(&room_id)
         .ok_or(StatusCode::NOT_FOUND)?;
     let room = connector.room.lock().unwrap();
-    let allowed_words = room.allowed_words.clone();
-    let banned_words = room.filter.config.banned_words.clone();
+
+    // Get allowed words and banned words from the game
+    let allowed_words = room.allowed_words().to_vec();
+    let banned_words = room.filter_config().banned_words.clone();
+
     Ok(Json(RoomWordsInfo {
         allowed_words,
         banned_words,

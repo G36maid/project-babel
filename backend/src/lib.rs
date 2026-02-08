@@ -1,5 +1,6 @@
 pub mod data;
 pub mod filter;
+pub mod game;
 pub mod manager;
 pub mod room;
 pub mod server;
