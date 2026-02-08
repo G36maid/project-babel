@@ -1,9 +1,9 @@
-use std::time::{SystemTime, UNIX_EPOCH};
-
-use tracing::{debug, trace};
-
 use crate::data::*;
 use crate::game::{CensorshipGame, GameRules};
+
+use std::collections::HashMap;
+use std::time::{SystemTime, UNIX_EPOCH};
+use tracing::{debug, trace};
 
 /// Game instructions message displayed when a room is created
 const GAME_INSTRUCTIONS: &str = "Welcome to Project Babel! You are trying to communicate across a censorship firewall. Each country has different words that are banned. Work together to discover which words are censored for each country using the allowed symbols. Good luck!";
@@ -297,10 +297,76 @@ impl ChatRoom {
     }
 }
 
+impl Room for ChatRoom {
+    fn room_id(&self) -> &RoomId {
+        &self.room_id
+    }
+
+    fn participants(&self) -> &[Participant] {
+        &self.participants
+    }
+
+    fn is_empty(&self) -> bool {
+        self.participants.is_empty()
+    }
+
+    fn add_participant(&mut self, user_id: UserId, country: CountryCode) -> bool {
+        self.add_participant(user_id, country)
+    }
+
+    fn remove_participant(&mut self, user_id: &UserId) -> bool {
+        self.remove_participant(user_id)
+    }
+
+    fn process_action(
+        &mut self,
+        user_id: &UserId,
+        country: &CountryCode,
+        action: UserAction,
+    ) -> (Option<Message>, Vec<Notification>) {
+        self.process_action(user_id, country, action)
+    }
+
+    fn get_censored_state_for(&self, country: &CountryCode) -> RoomState {
+        self.get_censored_state_for(country)
+    }
+
+    fn censor_message_for(&self, message: &Message, country: &CountryCode) -> CensoredMessage {
+        self.censor_message_for(message, country)
+    }
+
+    fn win(&mut self) {
+        self.win()
+    }
+
+    fn get_player_notes(&self) -> &HashMap<UserId, HashMap<CountryCode, Vec<String>>> {
+        self.get_player_notes()
+    }
+
+    fn get_player_progress(&self) -> Vec<PlayerProgress> {
+        self.get_player_progress()
+    }
+
+    fn check_victory(&mut self) -> bool {
+        self.check_victory()
+    }
+
+    fn get_victory_state(&self) -> VictoryState {
+        self.get_victory_state()
+    }
+
+    fn filter_config(&self) -> &FilterConfig {
+        self.filter_config()
+    }
+
+    fn allowed_words(&self) -> &[String] {
+        self.allowed_words()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::game::CensorshipGame;
     use std::collections::HashMap;
 
     fn make_test_config() -> &'static FilterConfig {
