@@ -77,7 +77,17 @@ export interface RoomUpdate {
 }
 
 // UserAction - matches backend UserAction enum (snake_case)
-export type UserAction = { send_message: string } | { leave_room: null };
+// System-level actions handled by the Room/RoomManager
+export type SystemAction =
+  | { send_message: string }
+  | { send_message_array: string[] }
+  | { leave_room: null };
+
+// Game-specific actions delegated to GameEngine/GameRules
+export type GameAction = { submit_notes: Record<string, string[]> };
+
+// Transport layer envelope for user actions
+export type UserAction = { system: SystemAction } | { game: GameAction };
 
 // Connection states
 export type ConnectionState =
