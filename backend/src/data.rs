@@ -168,7 +168,7 @@ pub trait Room: Send + Sync {
 }
 
 pub trait RoomConfig: Send + Sync {
-    fn get_filter_config(&self) -> &'static FilterConfig;
+    fn get_filter_config(&self) -> &FilterConfig;
     fn init_room(&self, room_id: RoomId) -> Box<dyn Room>;
 }
 

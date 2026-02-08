@@ -1,11 +1,13 @@
+use std::sync::Arc;
+
 use crate::data::{CENSORSHIP_REPLACEMENT, CountryCode, FilterConfig};
 
 pub struct CensorshipFilter {
-    pub(crate) config: &'static FilterConfig,
+    pub(crate) config: Arc<FilterConfig>,
 }
 
 impl CensorshipFilter {
-    pub fn new(config: &'static FilterConfig) -> Self {
+    pub fn new(config: Arc<FilterConfig>) -> Self {
         Self { config }
     }
 
@@ -75,17 +77,17 @@ mod tests {
     use super::*;
     use std::collections::HashMap;
 
-    fn make_config() -> FilterConfig {
+    fn make_config() -> Arc<FilterConfig> {
         let mut banned_words = HashMap::new();
         banned_words.insert("A".to_string(), vec!["bad".to_string(), "evil".to_string()]);
         banned_words.insert("B".to_string(), vec!["wrong".to_string()]);
 
-        FilterConfig { banned_words }
+        Arc::new(FilterConfig { banned_words })
     }
 
     #[test]
     fn test_censor_sender_words() {
-        let config = Box::leak(Box::new(make_config()));
+        let config = make_config();
         let filter = CensorshipFilter::new(config);
 
         let sender = "A".to_string();
@@ -98,7 +100,7 @@ mod tests {
 
     #[test]
     fn test_censor_receiver_words() {
-        let config = Box::leak(Box::new(make_config()));
+        let config = make_config();
         let filter = CensorshipFilter::new(config);
 
         let sender = "C".to_string();
@@ -111,7 +113,7 @@ mod tests {
 
     #[test]
     fn test_censor_both_filters() {
-        let config = Box::leak(Box::new(make_config()));
+        let config = make_config();
         let filter = CensorshipFilter::new(config);
 
         let sender = "A".to_string();
@@ -124,7 +126,7 @@ mod tests {
 
     #[test]
     fn test_no_censorship() {
-        let config = Box::leak(Box::new(make_config()));
+        let config = make_config();
         let filter = CensorshipFilter::new(config);
 
         let sender = "A".to_string();

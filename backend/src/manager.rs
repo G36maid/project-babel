@@ -127,7 +127,7 @@ impl RoomManager {
         })
     }
 
-    pub fn get_filter_config(&self) -> &'static FilterConfig {
+    pub fn get_filter_config(&self) -> &FilterConfig {
         self.config.get_filter_config()
     }
 
