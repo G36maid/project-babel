@@ -30,12 +30,36 @@ pub struct CensoredMessage {
     pub was_censored: bool,
 }
 
+/// System-level actions handled by the Room/RoomManager
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum SystemAction {
+    SendMessage(String),
+    SendMessageArray(Vec<String>),
+    LeaveRoom,
+}
+
+/// Game-specific actions delegated to GameEngine/GameRules
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum GameAction {
+    SubmitNotes(HashMap<CountryCode, Vec<String>>),
+}
+
+/// Transport layer envelope for user actions
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum UserAction {
+    System(SystemAction),
+    Game(GameAction),
+    // Keep legacy variants for backward compatibility during migration
+    #[serde(alias = "send_message")]
     SendMessage(String),
+    #[serde(alias = "send_message_array")]
     SendMessageArray(Vec<String>),
+    #[serde(alias = "submit_notes")]
     SubmitNotes(HashMap<CountryCode, Vec<String>>),
+    #[serde(alias = "leave_room")]
     LeaveRoom,
 }
 

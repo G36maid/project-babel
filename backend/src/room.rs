@@ -96,18 +96,17 @@ impl ChatRoom {
         self.participants.len() < initial_len
     }
 
-    /// Pure function - processes action and returns results without I/O
-    pub fn process_action(
+    /// Process a system action (messages, room management)
+    fn process_system_action(
         &mut self,
         user_id: &UserId,
         country: &CountryCode,
-        action: UserAction,
+        action: SystemAction,
     ) -> (Option<Message>, Vec<Notification>) {
         let mut notifications = Vec::new();
 
         match action {
-            // Accept only allowed words in message array
-            UserAction::SendMessageArray(words) => {
+            SystemAction::SendMessageArray(words) => {
                 // Only keep allowed words
                 let filtered: Vec<String> = words
                     .into_iter()
@@ -128,7 +127,50 @@ impl ChatRoom {
                 self.messages.push(message.clone());
                 (Some(message), notifications)
             }
-            UserAction::SubmitNotes(note_map) => {
+            SystemAction::SendMessage(content) => {
+                // split and filter
+                let filtered: Vec<String> = content
+                    .split_whitespace()
+                    .filter(|w| self.game.is_word_allowed(w))
+                    .map(|w| w.to_string())
+                    .collect();
+                let content = filtered.join(" ");
+                if content.is_empty() {
+                    return (None, notifications);
+                }
+                self.message_counter += 1;
+                let message = Message {
+                    id: self.message_counter,
+                    sender_id: user_id.clone(),
+                    sender_country: country.clone(),
+                    content,
+                    timestamp: Self::current_timestamp(),
+                };
+                self.messages.push(message.clone());
+                (Some(message), notifications)
+            }
+            SystemAction::LeaveRoom => {
+                if self.remove_participant(user_id) {
+                    notifications.push(Notification {
+                        message: format!("{} left the room", user_id),
+                    });
+                }
+                (None, notifications)
+            }
+        }
+    }
+
+    /// Process a game action (delegated to GameEngine/Rules)
+    fn process_game_action(
+        &mut self,
+        user_id: &UserId,
+        _country: &CountryCode,
+        action: GameAction,
+    ) -> (Option<Message>, Vec<Notification>) {
+        let mut notifications = Vec::new();
+
+        match action {
+            GameAction::SubmitNotes(note_map) => {
                 // Send note: players share their hypotheses about banned words
                 // Store the latest notes for this user
                 self.game.submit_player_notes(user_id, note_map.clone());
@@ -150,36 +192,36 @@ impl ChatRoom {
                 });
                 (None, notifications)
             }
-            UserAction::LeaveRoom => {
-                if self.remove_participant(user_id) {
-                    notifications.push(Notification {
-                        message: format!("{} left the room", user_id),
-                    });
-                }
-                (None, notifications)
+        }
+    }
+
+    /// Pure function - processes action and returns results without I/O
+    pub fn process_action(
+        &mut self,
+        user_id: &UserId,
+        country: &CountryCode,
+        action: UserAction,
+    ) -> (Option<Message>, Vec<Notification>) {
+        match action {
+            // New structured actions
+            UserAction::System(sys_action) => {
+                self.process_system_action(user_id, country, sys_action)
             }
-            // fallback for old SendMessage (single string)
+            UserAction::Game(game_action) => {
+                self.process_game_action(user_id, country, game_action)
+            }
+            // Legacy actions - convert to new format
+            UserAction::SendMessageArray(words) => {
+                self.process_system_action(user_id, country, SystemAction::SendMessageArray(words))
+            }
             UserAction::SendMessage(content) => {
-                // fallback: split and filter
-                let filtered: Vec<String> = content
-                    .split_whitespace()
-                    .filter(|w| self.game.is_word_allowed(w))
-                    .map(|w| w.to_string())
-                    .collect();
-                let content = filtered.join(" ");
-                if content.is_empty() {
-                    return (None, notifications);
-                }
-                self.message_counter += 1;
-                let message = Message {
-                    id: self.message_counter,
-                    sender_id: user_id.clone(),
-                    sender_country: country.clone(),
-                    content,
-                    timestamp: Self::current_timestamp(),
-                };
-                self.messages.push(message.clone());
-                (Some(message), notifications)
+                self.process_system_action(user_id, country, SystemAction::SendMessage(content))
+            }
+            UserAction::LeaveRoom => {
+                self.process_system_action(user_id, country, SystemAction::LeaveRoom)
+            }
+            UserAction::SubmitNotes(note_map) => {
+                self.process_game_action(user_id, country, GameAction::SubmitNotes(note_map))
             }
         }
     }
@@ -335,87 +377,8 @@ impl Room for ChatRoom {
         country: &CountryCode,
         action: UserAction,
     ) -> (Option<Message>, Vec<Notification>) {
-        let mut notifications = Vec::new();
-
-        match action {
-            // Accept only allowed words in message array
-            UserAction::SendMessageArray(words) => {
-                // Only keep allowed words
-                let filtered: Vec<String> = words
-                    .into_iter()
-                    .filter(|w| self.game.is_word_allowed(w))
-                    .collect();
-                let content = filtered.join(" ");
-                if content.is_empty() {
-                    return (None, notifications);
-                }
-                self.message_counter += 1;
-                let message = Message {
-                    id: self.message_counter,
-                    sender_id: user_id.clone(),
-                    sender_country: country.clone(),
-                    content,
-                    timestamp: Self::current_timestamp(),
-                };
-                self.messages.push(message.clone());
-                (Some(message), notifications)
-            }
-            UserAction::SubmitNotes(note_map) => {
-                // Send note: players share their hypotheses about banned words
-                // Store the latest notes for this user
-                self.game.submit_player_notes(user_id, note_map.clone());
-
-                // This generates a notification for other participants
-                let country_count = note_map.len();
-                let total_words: usize = note_map.values().map(|v| v.len()).sum();
-                let country_label = if country_count == 1 {
-                    "country"
-                } else {
-                    "countries"
-                };
-                let word_label = if total_words == 1 { "word" } else { "words" };
-                notifications.push(Notification {
-                    message: format!(
-                        "{} shared exploration notes ({} {}, {} {})",
-                        user_id, country_count, country_label, total_words, word_label
-                    ),
-                });
-                (None, notifications)
-            }
-            UserAction::LeaveRoom => {
-                let initial_len = self.participants.len();
-                self.participants.retain(|p| &p.user_id != user_id);
-                if self.participants.len() < initial_len {
-                    notifications.push(Notification {
-                        message: format!("{} left the room", user_id),
-                    });
-                }
-                (None, notifications)
-            }
-            // fallback for old SendMessage (single string)
-            UserAction::SendMessage(content) => {
-                // fallback: split and filter
-                let filtered: Vec<String> = content
-                    .split_whitespace()
-                    .filter(|w| self.game.is_word_allowed(w))
-                    .map(|w| w.to_string())
-                    .collect();
-                let content = filtered.join(" ");
-                if content.is_empty() {
-                    return (None, notifications);
-                }
-                self.message_counter += 1;
-                let message = Message {
-                    id: self.message_counter,
-                    sender_id: user_id.clone(),
-                    sender_country: country.clone(),
-                    content,
-                    timestamp: Self::current_timestamp(),
-                };
-                self.messages.push(message.clone());
-                (Some(message), notifications)
-            }
-        }
+        // Delegate to the ChatRoom implementation
+        ChatRoom::process_action(self, user_id, country, action)
     }
 
     fn get_censored_state_for(&self, country: &CountryCode) -> RoomState {
@@ -702,5 +665,141 @@ mod tests {
 
         // Verify we only have one entry per user
         assert_eq!(room.get_player_notes().len(), 1);
+    }
+
+    #[test]
+    fn test_system_action_send_message() {
+        let config = make_test_config();
+        let mut room = ChatRoom::new("test_room".to_string(), config);
+
+        let user_id = "alice".to_string();
+        let country = "A".to_string();
+        room.add_participant(user_id.clone(), country.clone());
+
+        // Test new SystemAction::SendMessage wrapped in UserAction::System
+        // Use a word from the allowed words list
+        let action = UserAction::System(SystemAction::SendMessage("hello".to_string()));
+        let (message, notifications) = room.process_action(&user_id, &country, action);
+
+        // Should create a message
+        assert!(message.is_some());
+        assert_eq!(notifications.len(), 0);
+        assert_eq!(message.unwrap().content, "hello");
+    }
+
+    #[test]
+    fn test_system_action_send_message_array() {
+        let config = make_test_config();
+        let mut room = ChatRoom::new("test_room".to_string(), config);
+
+        let user_id = "bob".to_string();
+        let country = "B".to_string();
+        room.add_participant(user_id.clone(), country.clone());
+
+        // Test new SystemAction::SendMessageArray wrapped in UserAction::System
+        // Use words from the allowed words list
+        let action = UserAction::System(SystemAction::SendMessageArray(vec![
+            "hello".to_string(),
+            "you".to_string(),
+        ]));
+        let (message, notifications) = room.process_action(&user_id, &country, action);
+
+        // Should create a message
+        assert!(message.is_some());
+        assert_eq!(notifications.len(), 0);
+        assert_eq!(message.unwrap().content, "hello you");
+    }
+
+    #[test]
+    fn test_system_action_leave_room() {
+        let config = make_test_config();
+        let mut room = ChatRoom::new("test_room".to_string(), config);
+
+        let user_id = "charlie".to_string();
+        let country = "C".to_string();
+        room.add_participant(user_id.clone(), country.clone());
+
+        // Verify user is in room
+        assert_eq!(room.participants.len(), 1);
+
+        // Test new SystemAction::LeaveRoom wrapped in UserAction::System
+        let action = UserAction::System(SystemAction::LeaveRoom);
+        let (message, notifications) = room.process_action(&user_id, &country, action);
+
+        // Should not create a message but should create notification
+        assert!(message.is_none());
+        assert_eq!(notifications.len(), 1);
+        assert!(notifications[0].message.contains("charlie left the room"));
+        assert_eq!(room.participants.len(), 0);
+    }
+
+    #[test]
+    fn test_game_action_submit_notes() {
+        let config = make_test_config();
+        let mut room = ChatRoom::new("test_room".to_string(), config);
+
+        let user_id = "diana".to_string();
+        let country = "D".to_string();
+        room.add_participant(user_id.clone(), country.clone());
+
+        // Create a note with suspected banned words
+        let mut note_map = HashMap::new();
+        note_map.insert("A".to_string(), vec!["freedom".to_string()]);
+
+        // Test new GameAction::SubmitNotes wrapped in UserAction::Game
+        let action = UserAction::Game(GameAction::SubmitNotes(note_map.clone()));
+        let (message, notifications) = room.process_action(&user_id, &country, action);
+
+        // Should not create a message
+        assert!(message.is_none());
+
+        // Should generate a notification
+        assert_eq!(notifications.len(), 1);
+        assert!(notifications[0].message.contains("diana"));
+        assert!(notifications[0].message.contains("exploration notes"));
+
+        // Should store the notes
+        let stored_note = room.get_player_note(&user_id);
+        assert!(stored_note.is_some());
+        assert_eq!(stored_note.unwrap(), &note_map);
+    }
+
+    #[test]
+    fn test_legacy_actions_still_work() {
+        let config = make_test_config();
+        let mut room = ChatRoom::new("test_room".to_string(), config);
+
+        let user_id = "eve".to_string();
+        let country = "E".to_string();
+        room.add_participant(user_id.clone(), country.clone());
+
+        // Test legacy UserAction::SendMessage still works
+        // Use a word from the allowed words list
+        let action = UserAction::SendMessage("hello".to_string());
+        let (message, _) = room.process_action(&user_id, &country, action);
+        assert!(message.is_some());
+        assert_eq!(message.unwrap().content, "hello");
+
+        // Test legacy UserAction::SendMessageArray still works
+        // Use words from the allowed words list
+        let action = UserAction::SendMessageArray(vec!["you".to_string(), "me".to_string()]);
+        let (message, _) = room.process_action(&user_id, &country, action);
+        assert!(message.is_some());
+        assert_eq!(message.unwrap().content, "you me");
+
+        // Test legacy UserAction::SubmitNotes still works
+        let mut note_map = HashMap::new();
+        note_map.insert("A".to_string(), vec!["freedom".to_string()]);
+        let action = UserAction::SubmitNotes(note_map.clone());
+        let (message, notifications) = room.process_action(&user_id, &country, action);
+        assert!(message.is_none());
+        assert_eq!(notifications.len(), 1);
+        assert_eq!(room.get_player_note(&user_id).unwrap(), &note_map);
+
+        // Test legacy UserAction::LeaveRoom still works
+        let action = UserAction::LeaveRoom;
+        let (_, notifications) = room.process_action(&user_id, &country, action);
+        assert_eq!(notifications.len(), 1);
+        assert!(notifications[0].message.contains("eve left the room"));
     }
 }
