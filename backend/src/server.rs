@@ -597,6 +597,8 @@ async fn handle_spectator_socket(socket: WebSocket, connector: RoomConnector, ro
             crate::data::Message,
             crate::data::CensoredMessage,
             crate::data::UserAction,
+            crate::data::SystemAction,
+            crate::data::GameAction,
             crate::data::Participant,
             crate::data::RoomState,
             crate::data::Notification,

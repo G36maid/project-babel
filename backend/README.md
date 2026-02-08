@@ -31,9 +31,44 @@ If you prefer to run it locally without Docker:
 - `src/main.rs`: Entry point and server initialization.
 - `src/server.rs`: API routes and WebSocket handlers.
 - `src/room.rs`: Chat room logic and state management.
+- `src/game.rs`: Game-specific logic and rules.
 - `src/filter.rs`: Censorship filtering engine.
 - `src/words.rs`: Word list generation and management.
 - `src/data.rs`: Type definitions and constants.
+- `src/manager.rs`: Room manager for handling multiple rooms.
+
+## 🎮 Action Architecture
+
+The backend uses a layered action architecture to separate concerns:
+
+### Action Types
+
+1. **`SystemAction`** - Room management actions handled by `ChatRoom`/`RoomManager`:
+   - `SendMessage(String)` - Send a single message
+   - `SendMessageArray(Vec<String>)` - Send multiple words as a message
+   - `LeaveRoom` - Leave the current room
+
+2. **`GameAction`** - Game-specific actions delegated to `GameRules`:
+   - `SubmitNotes(HashMap<CountryCode, Vec<String>>)` - Submit player hypotheses about banned words
+
+3. **`UserAction`** - Transport layer envelope that wraps the above:
+   - `System(SystemAction)` - Contains a system action
+   - `Game(GameAction)` - Contains a game action
+   - Legacy variants for backward compatibility (SendMessage, SendMessageArray, SubmitNotes, LeaveRoom)
+
+### Processing Flow
+
+```
+Client -> UserAction -> ChatRoom::process_action() -> {
+    System(...) -> process_system_action() -> RoomManager logic
+    Game(...)   -> process_game_action()   -> GameRules delegation
+}
+```
+
+This separation makes it easier to:
+- Add new game mechanics without modifying room management
+- Test system and game logic independently
+- Maintain clear boundaries between infrastructure and game logic
 
 ## 📄 API Documentation
 
